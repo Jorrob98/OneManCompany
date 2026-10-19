@@ -1,0 +1,13 @@
+# Deploy into the EXISTING Cloudflare Worker: ai-office-api
+name = "ai-office-api"
+main = "worker.mjs"
+compatibility_date = "2026-10-19"
+workers_dev = true
+
+[ai]
+binding = "AI"
+
+# Store these in Cloudflare's encrypted secrets, NEVER here:
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_WEBHOOK_SECRET
+# TELEGRAM_OWNER_ID
