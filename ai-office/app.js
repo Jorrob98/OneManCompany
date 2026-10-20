@@ -55,7 +55,7 @@ function navigate(page){
   if(page==="people")renderPeople();
   if(page==="tasks")renderTasks();
   if(page==="activity")renderActivity();
-  if(page==="office")requestAnimationFrame(resizeCanvas);
+  if(page==="office")requestAnimationFrame(()=>{resizeCanvas();window.dispatchEvent(new Event("studio:office-visible"));});
 }
 function renderAll(){
   $("statEmployees").textContent=short(active().length);
