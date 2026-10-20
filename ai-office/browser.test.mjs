@@ -35,7 +35,7 @@ try {
     error:window.AIOAgents3D?.error||""
   }));
   assert.equal(agentState.status,"ready",JSON.stringify(agentState));
-  assert.equal(agentState.agents.length,2);
+  assert.equal(agentState.agents.length,4);
   assert.deepEqual(await page.evaluate(()=>window.AIOAgents3D.activeClips),["idle","walk"]);
   const firstPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
   await page.waitForTimeout(1100);
@@ -43,7 +43,18 @@ try {
   assert.notEqual(firstPosition,nextPosition,"Rigged avatar is not moving between office waypoints");
 
   assert.equal(await page.locator(".office-agent-canvas").count(),1);
-  assert.equal(await page.locator(".office-agent-select").count(),2);
+  assert.equal(await page.locator(".office-agent-select").count(),4);
+  // A real UI click must direct the selected human agent to a visible work zone.
+  await page.locator('[data-action="agent-meeting"][data-id="a1"]').click();
+  assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.goal),"meeting");
+  await page.waitForFunction(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.point === "meeting",null,{timeout:13000});
+  assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/In riunione/);
+  await page.locator('[data-action="agent-desk"][data-id="a1"]').click();
+  assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.goal),"desk");
+
 
   await page.screenshot({path:"ai-office/office-premium-desktop.png"});
 
