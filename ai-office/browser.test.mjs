@@ -34,7 +34,7 @@ try {
 
   // Queue operations are explicit pending drafts, never faked AI work.
   await page.locator('[data-page="tasks"]').click();
-  await page.locator('[data-view="tasks"] [data-action="new-task"]').click();
+  await page.locator('[data-view="tasks"] .head-button[data-action="new-task"]').click();
   await page.locator("#taskTitle").fill("Prepara il report vendite");
   await page.locator("#taskDetail").fill("Analizza i dati del mese quando sarà disponibile un motore AI.");
   await page.locator('#taskForm button[type="submit"]').click();
