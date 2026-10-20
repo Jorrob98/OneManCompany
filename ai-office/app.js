@@ -145,7 +145,7 @@ function newTask(id){
  '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Salva incarico ↗</button></div></form>');
 }
 function info(){
- openModal("Che cosa funziona già?",'<p class="modal-text"><strong>Questa è una vera anteprima interattiva.</strong> La grafica isometrica, i personaggi e le animazioni sono stati realizzati appositamente per AI OFFICE.</p>'+
+ openModal("Che cosa funziona già?",'<p class="modal-text"><strong>Questa è una vera anteprima interattiva.</strong> La scena premium contiene due agenti 3D con modelli e animazioni professionali su licenza MIT, integrati da AI OFFICE. Le persone presenti nello sfondo sono ancora parte del render e non sono agenti controllabili.</p>'+
  '<p class="modal-text">Puoi assumere agenti, metterli in ferie, pensionarli, recuperarli e creare incarichi: i cambiamenti vengono salvati <strong>solo nel browser</strong> che stai usando.</p>'+
  '<p class="modal-note">Non è ancora collegata a Cloudflare, Telegram, al database o al motore multi-agente di OneManCompany. Non esegue attività AI e non sincronizza i dati tra i dispositivi.</p>'+
  '<div class="modal-actions"><button class="primary-button" data-action="close">Ho capito</button></div>');
