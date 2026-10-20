@@ -1,0 +1,24 @@
+name: AI Office Studio UI
+on:
+  push:
+    paths:
+      - "ai-office/**"
+      - ".github/workflows/ai-office-studio.yml"
+  pull_request:
+    paths:
+      - "ai-office/**"
+      - ".github/workflows/ai-office-studio.yml"
+permissions:
+  contents: read
+jobs:
+  ui-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: JavaScript syntax check
+        run: node --check ai-office/app.js
+      - name: UI smoke tests
+        run: node --test ai-office/studio.test.mjs
