@@ -1,36 +1,36 @@
-# AI OFFICE Studio — anteprima originale
+# AI OFFICE — Penthouse Control
 
-Progetto grafico indipendente aggiunto al fork di OneManCompany, senza toccarne i file originali.
+Questa cartella contiene la nuova applicazione web **AI OFFICE Studio** collegata al fork di OneManCompany.
+La versione attuale usa una **scena premium illustrata pre-renderizzata** come asset locale
+(`assets/penthouse-hero.webp`), con interazioni di gestione aggiunte via JavaScript.
+Il rendering approvato riguarda solo l'ambiente dell'ufficio, non è una schermata
+statica dell'intera interfaccia.
 
-**Apri \`index.html\` in un browser** o pubblica questa cartella come sito statico. L'interfaccia include un ufficio isometrico pixel-art programmato in Canvas, con rendering originale di stanze, mobili e personaggi; pannelli responsive per desktop e smartphone; selezione personaggi; assunzioni, ferie, pensionamenti, reintegri; incarichi in attesa; registro attività.
+## Funzioni disponibili nell'anteprima
 
-## Funzioni realmente attive
-- Gestione delle persone e degli incarichi **nel browser**; salvataggio con localStorage.
-- Controlli sull'ufficio (selezione dei dipendenti, ingrandimento, luce giorno/sera).
-- UI responsive originale; non incorpora screenshot o sprite del progetto upstream.
+- Grafica premium e ufficio panoramico in `index.html` con asset locale.
+- Segnaposto selezionabili degli agenti sul render; si aggiornano in base agli agenti disponibili.
+- Assunzione, ferie, pensionamento e reintegro degli agenti nel browser.
+- Creazione ed eliminazione incarichi in attesa, diario di attività locale.
+- Layout desktop + mobile con panoramica scorrevole; zoom e filtro d'illuminazione.
+- Dati dell'anteprima salvati solo su `localStorage`, senza sincronizzazione cloud.
 
-## Cosa NON è ancora funzionante
-- **Nessun motore AI**: non vengono svolti incarichi, né esiste una connessione a Ollama/Workers AI.
-- **Nessuna sincronizzazione cloud**: profili e incarichi locali non sono condivisi fra dispositivi.
-- **Nessuna autenticazione Telegram Mini App**: questa versione è una web preview pubblica e **non** contiene dati privati o chiavi.
-- **Nessun backend OneManCompany operativo**: il Worker Telegram è in una cartella distinta e richiede deploy/secrets.
+## Limitazioni esplicite
 
-La grafica originale realizzata con Canvas appartiene a questa nuova implementazione. OneManCompany rimane il riferimento concettuale e tecnico per la successiva integrazione degli agenti, con licenza Apache-2.0 separatamente preservata.
+- La scena è **2.5D**, non un modello 3D navigabile né un'immagine dell'intera applicazione.
+- Gli agenti AI **non eseguono ancora** gli incarichi; il backend originale Python di OneManCompany non è connesso.
+- Telegram, login e cloud database sono da integrare. Il Worker di prova è in `../cloudflare/`.
+- Non c'è un piano Pro da acquistare per questa anteprima; la versione attuale non invia dati a servizi AI.
 
-## Verifica
+## File di progetto
 
-Con Node 22:
+- `index.html`: navigazione e schede del prodotto.
+- `style.css`: tema originale e scena premium responsiva.
+- `app.js`: gestione locale di organico, incarichi e interazioni.
+- `penthouse.js`: segnaposto degli agenti sopra la scena, sincronizzati con `app.js`.
+- `assets/penthouse-hero.webp`: asset visivo approvato.
+- `office3d.js`: vecchio esperimento 3D, **non importato nella pagina**.
+- `browser.test.mjs`, `studio.test.mjs`: verifiche del prodotto.
 
-\`\`\`sh
-node --check ai-office/app.js
-node --test ai-office/studio.test.mjs
-\`\`\`
-
-## Roadmap
-
-1. Salvare configurazioni e incarichi su Cloudflare D1 con autenticazione Telegram server-side.
-2. Collegare un modello Workers AI a una coda di attività verificabile.
-3. Portare le funzioni di organico, valutazioni, riunioni e autoevoluzione di OneManCompany solo dopo una valutazione di compatibilità.
-4. Testare e pubblicare come Telegram Mini App. Azioni esterne/autonome sempre con permessi espliciti e audit.
-
-Niente finti risultati. La demo visualizza solo stati reali del prototipo.
+Per verificare: `node --check ai-office/app.js` e
+`node ai-office/browser.test.mjs` (richiede Chromium e Playwright).
