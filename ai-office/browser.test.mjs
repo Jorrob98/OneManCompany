@@ -25,6 +25,20 @@ try {
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
   assert.equal(await page.locator(".penthouse-artwork").count(), 1, "Premium scene artwork missing");
   assert.equal(await page.locator(".agent-hotspot").count(),4);
+  // Accept only actual GLB model/animation readiness, not a decorative screenshot.
+  await page.waitForFunction(
+    () => ["ready","fallback-load-error","fallback-no-webgl"].includes(window.AIOAgents3D?.status),
+    null,{timeout:45000});
+  const agentState=await page.evaluate(()=>({
+    status:window.AIOAgents3D?.status,
+    agents:window.AIOAgents3D?.agents||[],
+    error:window.AIOAgents3D?.error||""
+  }));
+  assert.equal(agentState.status,"ready",JSON.stringify(agentState));
+  assert.equal(agentState.agents.length,2);
+  assert.equal(await page.locator(".office-agent-canvas").count(),1);
+  assert.equal(await page.locator(".office-agent-select").count(),2);
+
   await page.screenshot({path:"ai-office/office-premium-desktop.png"});
 
 
