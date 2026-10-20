@@ -402,7 +402,7 @@ function scene(t){
  text("YOUR COMPANY, ALIVE",s[0],s[1]+28,12,"#f4e8d1aa","700");
 }
 let reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches,frameSkip=0;
-function loop(t){if(document.visibilityState!=="hidden"&&(!reduced||frameSkip++%30===0))scene(t);raf=requestAnimationFrame(loop);}
+function loop(t){if(canvas.offsetParent!==null&&document.visibilityState!=="hidden"&&(!reduced||frameSkip++%30===0))scene(t);raf=requestAnimationFrame(loop);}
 canvas.addEventListener("click",event=>{
  const r=canvas.getBoundingClientRect();
  const x=(event.clientX-r.left-offX)/scale,y=(event.clientY-r.top-offY)/scale;
