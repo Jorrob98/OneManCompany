@@ -1,5 +1,5 @@
 /**
- * AI OFFICE — Live 3D Agents, MVP (two people).
+ * AI OFFICE — Live 3D Agents, milestone 2 (four people, directed interactions).
  * Real GLB rigged humans + separate Biped animation clips; three.js/WebGL.
  * MIT model/clip licensing: https://models.codelove.in/licensing
  * Motion is only a simulation of office presence, NEVER evidence of task execution.
@@ -38,14 +38,22 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const stages = [
   {
     entry: {x:56,y:91}, desk: {x:56,y:71}, lounge: {x:41,y:70},
-    routes: ["desk","lounge","desk"], duration: [10,7,8]
+    meeting: {x:63,y:55}, routes: ["desk","lounge","desk","meeting","desk"]
   },
   {
     entry: {x:73,y:90}, desk: {x:68,y:73}, lounge: {x:78,y:66},
-    routes: ["desk","lounge","desk"], duration: [11,7,8]
+    meeting: {x:65,y:53}, routes: ["desk","meeting","desk","lounge","desk"]
+  },
+  {
+    entry: {x:38,y:91}, desk: {x:45,y:76}, lounge: {x:38,y:66},
+    meeting: {x:57,y:52}, routes: ["desk","meeting","desk","lounge","desk"]
+  },
+  {
+    entry: {x:86,y:91}, desk: {x:80,y:75}, lounge: {x:83,y:65},
+    meeting: {x:70,y:54}, routes: ["desk","lounge","desk","meeting","desk"]
   }
 ];
-const MAX_AGENTS = 2;
+const MAX_AGENTS = 4;
 const DIM_X=16,DIM_Y=9;
 const place = (p)=> new THREE.Vector3((p.x/100-.5)*DIM_X,(.5-p.y/100)*DIM_Y,0);
 const stagePeople = new Map();
@@ -135,13 +143,16 @@ function nameButton(a, actor){
   button.title=a.name+" · 3D";
   const text=document.createElement("span");
   text.textContent=a.name;
-  button.append(text);
+  const state=document.createElement("small");
+  state.className="office-agent-mode";
+  state.textContent="In ingresso";
+  button.append(text,state);
   button.addEventListener("click",()=>select(a.id));
   pickLayer.appendChild(button);
   actor.hit=button;
 }
 function build(a,index) {
-  const sex=index===0?"female":"male";
+  const sex=index%2===0?"female":"male";
   const source=assets[sex];if(!source)return;
   const holder=new THREE.Group();
   const body=cloneRig(source.template);
@@ -155,7 +166,7 @@ function build(a,index) {
   holder.position.copy(position);
   // GLB skin rest-pose bounding boxes under-report actual animated extent:
   // calibrate against the photographed 2.5D office (not a full-world 3D camera).
-  const factor=0.38*(index===0?1.45:1.50)/safeHeight;
+  const factor=0.38*(index%2===0?1.45:1.50)/safeHeight;
   body.scale.setScalar(factor);
   const shade=shadow();holder.add(shade);
   world.add(holder);
@@ -168,8 +179,8 @@ function build(a,index) {
     }
   });
   const actor={id:a.id,sex,index,holder,body,mixer,actions,state:"",point:"entry",
-    from:place(template.entry),to:place(template.desk),travel:0,wait:0,
-    next:0,routeIndex:0,closing:false,hit:null};
+    goal:"desk",from:place(template.entry),to:place(template.desk),travel:0,wait:0,
+    next:0,routeIndex:0,closing:false,manualUntil:0,hit:null};
   nameButton(a,actor);
   stagePeople.set(a.id,actor);
   updateClip(actor,"walk");
@@ -184,6 +195,21 @@ function updateClip(actor,next){
     if(old) action.crossFadeFrom(old,.32,false);
   }
   actor.state=next;
+  const status=actor.hit?.querySelector(".office-agent-mode");
+  if(status){
+    status.textContent=actor.closing?"In uscita":
+      next==="walk"?"In movimento":
+      actor.point==="meeting"?"In riunione":
+      actor.point==="lounge"?"In pausa":"Alla scrivania";
+  }
+}
+function moveToZone(actor,zone){
+  const area=stages[actor.index]?.[zone];
+  if(!area)return false;
+  actor.goal=zone;
+  actor.wait=0;
+  move(actor,area);
+  return true;
 }
 function move(actor,target){
   actor.from.copy(actor.holder.position);
@@ -205,15 +231,20 @@ function removeActor(actor){
 function sync() {
   if(info.status!=="ready")return;
   const people=bridge.getAgents();
-  const candidates=people.filter(a=>a.status!=="retired").slice(0,MAX_AGENTS);
+  const candidates=people.filter(a=>a.status==="available").slice(0,MAX_AGENTS);
   const wanted=new Set(candidates.map(a=>a.id));
   for(const [id,actor] of stagePeople) {
     const a=people.find(p=>p.id===id);
     if(!a||a.status!=="available"||!wanted.has(id)){
       if(!actor.closing) {
         actor.closing=true;
-        move(actor,stages[actor.index].entry);
+        actor.manualUntil=0;
+        moveToZone(actor,"entry");
       }
+    } else if(actor.closing){
+      // A recalled employee must not disappear after a quick vacation toggle.
+      actor.closing=false;
+      moveToZone(actor,"desk");
     }
   }
   candidates.forEach((a,index)=>{
@@ -236,19 +267,21 @@ function animateActor(actor,delta,time){
       actor.to.x>actor.from.x?.20:-.20,.06);
     if(actor.travel>=1){
       if(actor.closing){removeActor(actor);return;}
-      actor.wait=0;updateClip(actor,"idle");
+      actor.point=actor.goal;
+      actor.wait=0;
+      // Talking is a real rig animation; falling back to idle if absent.
+      updateClip(actor,actor.point==="meeting"||actor.point==="lounge"?"talk":"idle");
     }
   } else if(!actor.closing) {
     actor.wait+=delta;
     const templates=stages[actor.index];
-    if(actor.wait>7+actor.index*2&&!reducedMotion.matches) {
+    if(actor.wait>10+actor.index*2&&!reducedMotion.matches && performance.now()>actor.manualUntil) {
       actor.wait=0;
       actor.routeIndex=(actor.routeIndex+1)%templates.routes.length;
-      move(actor,templates[templates.routes[actor.routeIndex]]);
+      moveToZone(actor,templates.routes[actor.routeIndex]);
     }
   }
   if(actor.hit){
-    const rect=surface.getBoundingClientRect();
     const projected=actor.holder.position.clone();
     projected.y+=.85;
     projected.project(camera);
@@ -265,6 +298,17 @@ function loop(){
   renderer.render(world,camera);
   info.frames++;
 }
+// User-triggered directions are only visual commands, never real AI tasks.
+info.command=(id,zone)=>{
+  if(!["desk","meeting","lounge"].includes(zone)||info.status!=="ready")return false;
+  const actor=stagePeople.get(id);
+  if(!actor||actor.closing)return false;
+  actor.manualUntil=performance.now()+30000;
+  return moveToZone(actor,zone);
+};
+info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
+  id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing
+}));
 function centerForMobile(){
   if(matchMedia("(max-width: 750px)").matches) {
     const delta=surface.scrollWidth-stage.clientWidth;
