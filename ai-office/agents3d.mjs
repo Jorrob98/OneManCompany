@@ -116,7 +116,12 @@ async function preload() {
     ]);
     return [sex,{template:gltf.scene,animations:Object.fromEntries(anim)}];
   }));
-  for(const [sex,bundle] of bundles) assets[sex]=bundle;
+  for(const [sex,bundle] of bundles) {
+    if(!bundle.animations.idle || !bundle.animations.walk)
+      throw new Error("Missing actual GLB idle/walk animation clips: "+sex);
+    assets[sex]=bundle;
+  }
+  info.activeClips=["idle","walk"];
 }
 function select(id) {
   bridge.select(id);
@@ -150,7 +155,7 @@ function build(a,index) {
   holder.position.copy(position);
   // GLB skin rest-pose bounding boxes under-report actual animated extent:
   // calibrate against the photographed 2.5D office (not a full-world 3D camera).
-  const factor=0.30*(index===0?1.45:1.50)/safeHeight;
+  const factor=0.38*(index===0?1.45:1.50)/safeHeight;
   body.scale.setScalar(factor);
   const shade=shadow();holder.add(shade);
   world.add(holder);
@@ -267,6 +272,12 @@ async function init() {
     info.status="ready";
     stage.classList.add("has-live-3d");
     sync();
+    // Show the moving agents immediately on narrow phones (the office pans horizontally).
+    if(matchMedia("(max-width: 750px)").matches) {
+      requestAnimationFrame(()=>{
+        stage.scrollLeft=Math.max(0,(surface.scrollWidth-stage.clientWidth)*.52);
+      });
+    }
     loop();
     window.dispatchEvent(new CustomEvent("studio:agents3d-ready",{detail:{count:info.agents.length}}));
   } catch(err){
