@@ -22,9 +22,10 @@ try {
   await page.locator("#statEmployees").waitFor();
   assert.equal(await page.locator("#statEmployees").innerText(),"04");
   // This project must render actual WebGL geometry, not a static image.
-  await page.waitForFunction(() => window.__AI_OFFICE_3D_READY === true, null, {timeout:25000});
-  assert.equal(await page.locator(".office3d-canvas").count(), 1, "3D viewport is missing");
-  await page.screenshot({path:"ai-office/office-3d-desktop.png"});
+  await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
+  assert.equal(await page.locator(".penthouse-artwork").count(), 1, "Premium scene artwork missing");
+  assert.equal(await page.locator(".agent-hotspot").count(),4);
+  await page.screenshot({path:"ai-office/office-premium-desktop.png"});
 
 
   // Personnel interaction and durable local browser storage.
@@ -54,8 +55,8 @@ try {
   assert.ok(await page.locator('[data-page="people"]').isVisible());
   const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
   await page.goto("http://127.0.0.1:"+port+"/#office",{waitUntil:"domcontentloaded"});
-  await page.waitForFunction(() => window.__AI_OFFICE_3D_READY === true, null, {timeout:25000});
-  await page.screenshot({path:"ai-office/office-3d-mobile.png"});
+  await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
+  await page.screenshot({path:"ai-office/office-premium-mobile.png"});
 
   assert.ok(sizes.scroll<=sizes.viewport+2,"Horizontal overflow on mobile: "+JSON.stringify(sizes));
   assert.deepEqual(errors,[],"Browser runtime errors");
