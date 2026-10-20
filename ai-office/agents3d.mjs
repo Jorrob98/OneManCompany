@@ -148,7 +148,9 @@ function build(a,index) {
   const template=stages[index];
   const position=place(template.entry);
   holder.position.copy(position);
-  const factor=(index===0?1.45:1.50)/safeHeight;
+  // GLB skin rest-pose bounding boxes under-report actual animated extent:
+  // calibrate against the photographed 2.5D office (not a full-world 3D camera).
+  const factor=0.30*(index===0?1.45:1.50)/safeHeight;
   body.scale.setScalar(factor);
   const shade=shadow();holder.add(shade);
   world.add(holder);
