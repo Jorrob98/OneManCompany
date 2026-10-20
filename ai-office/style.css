@@ -7,3 +7,63 @@
 .scene-wrap:after{z-index:2}
 .room-hint,.scene-watermark{z-index:3;pointer-events:none}
 .office3d-warning{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:5;background:#443029;color:#ffe5c7;border:1px solid #8c6554;border-radius:10px;padding:9px 15px;font-size:12px}
+
+
+/* AI OFFICE Penthouse • approved art direction, inside the existing real app. */
+.office-grid{display:flex;flex-direction:column;gap:0}
+.room-card{width:100%;border:1px solid #3c4152;box-shadow:0 24px 70px #0004}
+.scene-wrap{position:relative;height:auto;min-height:0;aspect-ratio:1280 / 530;overflow:hidden;background:#131b29}
+.scene-wrap #roomCanvas{display:none!important}
+.scene-wrap:after{z-index:2;pointer-events:none;background:linear-gradient(0deg,rgba(8,14,25,.24),transparent 18%,transparent 82%,rgba(11,19,32,.15))}
+.penthouse-stage{position:absolute;inset:0;z-index:1;overflow:hidden;isolation:isolate;background:linear-gradient(120deg,#171d2e,#2d3142)}
+.penthouse-surface{position:relative;width:100%;height:100%;overflow:hidden;transition:transform .55s cubic-bezier(.2,.7,.2,1)}
+.penthouse-artwork{display:block;width:100%;height:100%;object-fit:fill;image-rendering:auto;filter:saturate(1.08) contrast(1.03);transition:filter .5s,transform .8s}
+.penthouse-wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#0d172619,transparent 22%,transparent 76%,#0d172610);transition:background .45s}
+.penthouse-stage.daytime .penthouse-artwork{filter:brightness(1.19) saturate(.92) contrast(.98)}
+.penthouse-stage.daytime .penthouse-wash{background:#e7dfcb08}
+.penthouse-stage.close-view .penthouse-surface{transform:scale(1.2)}
+.penthouse-markers{position:absolute;inset:0}
+.agent-hotspot{position:absolute;z-index:3;transform:translate(-50%,-50%);display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:#0b1421dd;box-shadow:0 4px 24px #000a,0 0 0 1px #fff4;backdrop-filter:blur(6px);transition:box-shadow .2s,scale .2s;cursor:pointer;scale:.92;color:white}
+.agent-hotspot:hover{scale:1.18;box-shadow:0 0 28px #75bfe598,0 4px 25px #0009}
+.agent-hotspot:focus-visible{outline:2px solid #ffe0ad;outline-offset:5px}
+.hotspot-core{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#8dd9d1,#4f93c2);color:#112035;font:700 19px 'Space Grotesk';border:1px solid #dff6ff85}
+.agent-hotspot.selected{box-shadow:0 0 0 2px #f5d4a8,0 0 28px #f7c88a9d,0 3px 22px #0009;scale:1.1}
+.agent-hotspot.selected .hotspot-core{background:linear-gradient(135deg,#ffdfaa,#e6ab77);color:#362b2d}
+.agent-hotspot.selected:before{content:'';position:absolute;inset:-7px;border:1px solid #ffe4b5a3;border-radius:50%;animation:office-focus 2.5s ease-in-out infinite;pointer-events:none}
+@keyframes office-focus{50%{opacity:.35;transform:scale(1.23)}}
+.hotspot-label{position:absolute;bottom:44px;left:50%;transform:translateX(-50%) translateY(5px);min-width:96px;display:flex;flex-direction:column;align-items:center;gap:3px;background:#111a2bf2;border:1px solid #a8bbca69;border-radius:9px;padding:7px 11px;color:#fff;box-shadow:0 7px 24px #0009;opacity:0;pointer-events:none;transition:transform .2s,opacity .2s;white-space:nowrap}
+.hotspot-label strong{font:700 12px 'Space Grotesk'}
+.hotspot-label small{font:500 9px 'DM Sans';color:#b6cad6}
+.agent-hotspot.selected .hotspot-label,.agent-hotspot:hover .hotspot-label,.agent-hotspot:focus-visible .hotspot-label{opacity:1;transform:translateX(-50%) translateY(0)}
+.penthouse-counter{position:absolute;right:17px;top:16px;z-index:4;display:flex;align-items:center;gap:9px;border:1px solid #5f6b7080;border-radius:100px;background:#0c1726cb;backdrop-filter:blur(9px);padding:8px 13px;font:600 10px 'IBM Plex Mono';color:#d4e7e2;letter-spacing:.8px;pointer-events:none}
+.penthouse-counter strong{font-size:12px;color:#f9e1b6;margin-left:3px}
+.room-hint,.scene-watermark{z-index:5;pointer-events:none}
+.scene-label{color:#a5c9c4}
+.floor-toolbar{background:#1b2534}
+.floor-toolbar button{border-color:#55536a;background:#323448;color:#f0cfab}
+.side-stack{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(285px,1fr);gap:16px;margin-top:15px}
+.employee-panel{min-height:190px}
+.team-mini-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:none;gap:9px}
+.focus-panel{min-height:190px}
+.focus-panel .focus-avatar{float:left;margin:0 15px 10px 0}
+.focus-panel .focus-status{clear:both}
+.under-grid{grid-template-columns:minmax(0,1.35fr) minmax(285px,1fr)}
+.penthouse-stage.scene-error{background:#20263b}
+.penthouse-stage.scene-error .penthouse-surface{display:none}
+.penthouse-stage.scene-error:after{content:'Scena grafica temporaneamente non disponibile';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:15px;color:#ffe4bc;font-size:14px}
+@media(max-width:990px){.scene-wrap{aspect-ratio:1280 / 555}.side-stack{grid-template-columns:1fr 1fr}}
+@media(max-width:750px){
+ .scene-wrap{height:375px;aspect-ratio:auto;min-height:0}
+ .penthouse-stage{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#998575 #1a2634;-webkit-overflow-scrolling:touch}
+ .penthouse-surface{height:100%;width:920px;min-width:920px}
+ .penthouse-artwork{object-fit:fill}
+ .penthouse-stage.close-view .penthouse-surface{transform:none}
+ .penthouse-counter{position:sticky;left:12px;right:auto;top:13px;width:max-content;margin-top:-355px;margin-left:10px}
+ .side-stack{display:flex;flex-direction:column;gap:11px}
+ .team-mini-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .focus-panel{min-height:0}
+ .room-hint{font-size:9px}
+ .under-grid{grid-template-columns:1fr}
+ .agent-hotspot{width:37px;height:37px}
+}
+@media(prefers-reduced-motion:reduce){.agent-hotspot.selected:before{animation:none}}
