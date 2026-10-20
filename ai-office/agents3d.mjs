@@ -274,6 +274,7 @@ function centerForMobile(){
 // Viewport may change after the module has already loaded (desktop -> phone emulation,
 // rotation, or returning to the office from another application section).
 window.addEventListener("resize",()=>requestAnimationFrame(centerForMobile));
+window.addEventListener("studio:office-visible",()=>requestAnimationFrame(centerForMobile));
 async function init() {
   if(!renderer)return;
   try {
