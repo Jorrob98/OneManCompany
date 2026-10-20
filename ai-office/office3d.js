@@ -110,7 +110,7 @@ function createShell(){
  const slab=box(root,0,-.28,0,19,.56,14,mat(0x171c24,.38,.5),false);
  slab.receiveShadow=true;
  box(root,0,.02,0,18.65,.05,13.65,floorMat,false);
- const tileA=mat(0x353b41,.27,.25),tileB=mat(0x323a40,.23,.25);
+ const tileA=mat(0x46494a,.27,.25),tileB=mat(0x404448,.23,.25);
  for(let x=-9;x<9;x+=1.2)for(let z=-6.6;z<6.6;z+=1.2){
    box(root,x+.6,.058,z+.6,1.182,.02,1.182,Math.round((x+z)*3)%4===0?tileB:tileA,false);
  }
@@ -121,7 +121,8 @@ function createShell(){
    track(root,a[0],a[1],b[0],b[1],-.05,neonWarm,.075);
  }
  // Back and left transparent-looking architectural walls, black mullions
- wall(root,0,2.3,-6.95,19,4.7,.18,mat(0x1c2634,.8));
+ wall(root,0,.48,-6.95,19,.95,.18,mat(0x27323f,.8));
+ wall(root,0,4.43,-6.95,19,.51,.18,mat(0x1c2634,.8));
  wall(root,-9.35,2.1,-.3,.18,4.35,13.3,mat(0x22303a,.68));
  box(root,0,4.69,-6.95,18.8,.13,.22,metal,false);
  // Panoramic windows behind office + deep city beyond
@@ -335,7 +336,7 @@ function person(a,index){
 }
 function syncPeople(){
  agency.clear();agents.clear();interactive.length=0;
- const list=bridge.getAgents().filter(a=>a.status!=="retired");
+ const list=bridge.getAgents().filter(a=>a.status==="available");
  list.forEach((a,i)=>person(a,i));
  selected=bridge.getSelected();
  for(const [id,e] of agents){e.halo.visible=id===selected;e.label.visible=id===selected;}
@@ -344,9 +345,9 @@ function selectAgent(id){
  bridge.select(id);syncPeople();
 }
 function lights(){
- scene.add(new THREE.AmbientLight(0xa2b2d6,.73));
- const hemi=new THREE.HemisphereLight(0xc9deec,0x44302a,1.12);scene.add(hemi);
- const sun=new THREE.DirectionalLight(0xffe1c5,2.25);
+ scene.add(new THREE.AmbientLight(0xa2b2d6,1.02));
+ const hemi=new THREE.HemisphereLight(0xc9deec,0x554335,1.45);scene.add(hemi);
+ const sun=new THREE.DirectionalLight(0xffe1c5,3.0);
  sun.position.set(-7,13,9);sun.castShadow=true;
  sun.shadow.mapSize.set(2048,2048);
  sun.shadow.camera.left=-13;sun.shadow.camera.right=13;sun.shadow.camera.top=14;sun.shadow.camera.bottom=-14;
@@ -417,11 +418,11 @@ let illumination;
 function setMood(mood){
  night=mood!=="day";
  scene.background=new THREE.Color(night?0x0b1221:0x26384b);
- illumination.sun.intensity=night?2.25:3.3;
+ illumination.sun.intensity=night?3.0:3.9;
  illumination.accent.intensity=night?30:15;
  illumination.key.intensity=night?34:20;
  illumination.loungeLight.intensity=night?22:13;
- renderer.toneMappingExposure=night?1.17:1.3;
+ renderer.toneMappingExposure=night?1.38:1.46;
 }
 function animate(t){
  raf=requestAnimationFrame(animate);
@@ -445,7 +446,7 @@ async function boot(){
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:"high-performance"});
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.17;
+  renderer.toneMappingExposure=1.38;
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.domElement.className="office3d-canvas";
