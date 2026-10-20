@@ -87,7 +87,11 @@ function renderFocus(){
     '<span class="focus-status">'+(a.status==="vacation"?"☼ In ferie — fuori ufficio":"● Disponibile — nessuna esecuzione AI")+'</span>'+
     '<div class="focus-buttons"><button data-action="new-task" data-id="'+esc(a.id)+'">＋ Incarico</button>'+
     '<button data-action="vacation" data-id="'+esc(a.id)+'">'+(a.status==="vacation"?"↩ Richiama":"☀ Ferie")+'</button>'+
-    '<button class="danger" data-action="retire" data-id="'+esc(a.id)+'">Pensiona</button></div>';
+    '<button class="danger" data-action="retire" data-id="'+esc(a.id)+'">Pensiona</button></div>'+
+    (a.status==="available"?'<div class="agent-director"><div class="focus-eyebrow">MOVIMENTI 3D · DEMO VISIVA</div>'+
+    '<div class="focus-buttons"><button data-action="agent-desk" data-id="'+esc(a.id)+'">⌑ Scrivania</button>'+
+    '<button data-action="agent-meeting" data-id="'+esc(a.id)+'">♧ Riunione</button>'+
+    '<button data-action="agent-lounge" data-id="'+esc(a.id)+'">☕ Pausa</button></div></div>':'');
 }
 function renderPeople(){
   const filter=document.querySelector(".segment.active")?.dataset.filter||"all";
@@ -162,6 +166,17 @@ function action(kind,id){
  if(kind==="close"){closeModal();return;}
  if(kind==="hire"){hire();return;}
  if(kind==="new-task"){newTask(id||state.selected);return;}
+ if(["agent-desk","agent-meeting","agent-lounge"].includes(kind)){
+   if(!a||a.status!=="available"){toast("Il dipendente non è disponibile.");return;}
+   const zone=kind.slice(6);
+   if(window.AIOAgents3D?.command?.(id,zone)){
+     toast(({desk:"Verso la scrivania",meeting:"Verso la riunione",lounge:"Verso la pausa"})[zone]+
+       " · animazione dimostrativa");
+   } else {
+     toast("Questa versione anima fino a quattro agenti 3D disponibili.");
+   }
+   return;
+ }
  if(kind==="select"&&a){state.selected=a.id;navigate("office");renderAll();return;}
  if(kind==="vacation"&&a&&a.status!=="retired"){
    a.status=a.status==="vacation"?"available":"vacation";
