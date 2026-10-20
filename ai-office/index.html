@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="./style.css" rel="stylesheet">
   <script defer src="./app.js"></script>
-  <script type="module" src="./office3d.js"></script>
+  <script defer src="./penthouse.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -64,14 +64,22 @@
           <section class="room-card" aria-label="Ufficio virtuale interattivo">
             <div class="panel-top">
               <div><span class="window-dot mint-dot"></span><strong>Studio Floor</strong><span class="floor-suffix">/ HQ</span></div>
-              <div class="scene-actions"><span class="scene-label"><span class="pulse-dot"></span> VISUALIZZAZIONE LIVE*</span><button id="roomZoom" class="scene-action" title="Cambia inquadratura">⤢</button></div>
+              <div class="scene-actions"><span class="scene-label"><span class="pulse-dot"></span> UFFICIO INTERATTIVO · ANTEPRIMA</span><button id="roomZoom" class="scene-action" title="Cambia inquadratura">⤢</button></div>
             </div>
             <div class="scene-wrap">
-              <canvas id="roomCanvas" role="img" aria-label="Ufficio isometrico animato. Seleziona un dipendente dal pannello per interagire."></canvas>
-              <div class="room-hint"><span class="hint-icon">⌖</span> Seleziona un personaggio</div>
+              <canvas id="roomCanvas" aria-hidden="true"></canvas>
+              <div class="penthouse-stage" id="penthouseStage" aria-label="Ufficio premium interattivo con selezione dipendenti">
+                <div class="penthouse-surface" id="penthouseSurface">
+                  <img class="penthouse-artwork" src="./assets/penthouse-hero.webp" alt="Ufficio AI premium con vetrate panoramiche, postazioni operative, area meeting e centro di controllo" loading="eager" decoding="async">
+                  <div class="penthouse-wash"></div>
+                  <div class="penthouse-markers" id="penthouseMarkers"></div>
+                </div>
+                <div class="penthouse-counter"><span class="pulse-dot"></span> PRESENTI <strong id="penthousePresent">04</strong></div>
+              </div>
+              <div class="room-hint"><span class="hint-icon">⌖</span> Tocca i segnaposto degli agenti</div>
               <div class="scene-watermark"><span class="scene-watermark-spark">✦</span> AIO / STUDIO</div>
             </div>
-            <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Pixel world / Creato per AI OFFICE</span><button id="roomMood" title="Alterna ambientazione">☼ Ambiente</button></div>
+            <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Penthouse Control · Atmosfera premium</span><button id="roomMood" title="Alterna ambientazione">☼ Ambiente</button></div>
           </section>
           <aside class="side-stack">
             <div class="employee-panel">
@@ -83,7 +91,7 @@
           </aside>
         </div>
         <div class="under-grid">
-          <div class="notice"><span class="notice-icon">↳</span><div><strong>Una grafica che vive.</strong><p>Personaggi e ambienti animati sono originali. Le azioni gestionali sono vere in questa anteprima, ma vengono salvate solo su questo dispositivo.</p></div></div>
+          <div class="notice"><span class="notice-icon">↳</span><div><strong>Una grafica che vive.</strong><p>Scena illustrata premium con agenti selezionabili. Assunzioni, ferie e incarichi vengono gestiti e salvati nel browser; il motore AI è ancora da collegare.</p></div></div>
           <button id="roadmapBtn" class="roadmap"><span>✧</span><strong>Il prossimo capitolo</strong><small>Telegram · Cloudflare · Agenti veri</small><span class="roadmap-arrow">↗</span></button>
         </div>
       </section>
