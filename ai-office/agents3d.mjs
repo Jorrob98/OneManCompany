@@ -274,9 +274,7 @@ async function init() {
     sync();
     // Show the moving agents immediately on narrow phones (the office pans horizontally).
     if(matchMedia("(max-width: 750px)").matches) {
-      requestAnimationFrame(()=>{
-        stage.scrollLeft=Math.max(0,(surface.scrollWidth-stage.clientWidth)*.52);
-      });
+      stage.scrollLeft=Math.max(0,(surface.scrollWidth-stage.clientWidth)*.52);
     }
     loop();
     window.dispatchEvent(new CustomEvent("studio:agents3d-ready",{detail:{count:info.agents.length}}));
