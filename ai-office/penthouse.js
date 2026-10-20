@@ -22,6 +22,7 @@
       const [x, y] = spots[i % spots.length];
       const button = document.createElement("button");
       button.type = "button";
+      button.dataset.agentId = agent.id;
       button.className = "agent-hotspot" + (selected === agent.id ? " selected" : "");
       button.style.left = x + "%";
       button.style.top = y + "%";
