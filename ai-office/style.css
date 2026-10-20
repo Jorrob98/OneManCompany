@@ -104,8 +104,19 @@
  opacity:0;pointer-events:none
 }
 .penthouse-stage.has-live-3d .penthouse-counter:after{
- content:' · 2 AVATAR 3D';color:#9fe0e6;margin-left:4px
+ content:' · AVATAR 3D';color:#9fe0e6;margin-left:4px
 }
 @media(max-width:750px){
  .office-agent-select{min-height:29px;padding:6px 12px;font-size:11px}
 }
+
+/* Living Office phase 2: legible 3D nameplate with actual simulated zone. */
+.office-agent-select{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.15;min-width:77px}
+.office-agent-select .office-agent-mode{font-size:9px;color:#a7d5d9;font-weight:500;max-width:130px}
+.office-agent-select.selected .office-agent-mode{color:#f3cf9c}
+.agent-director{clear:both;margin-top:14px;padding-top:14px;border-top:1px solid #3e4b5b}
+.agent-director .focus-eyebrow{font-size:9px;color:#d7b992;margin-bottom:10px}
+.agent-director .focus-buttons{gap:6px}
+.agent-director button{background:#223d48;border-color:#446475}
+.agent-director button:hover{background:#315966}
+@media(max-width:750px){.office-agent-select .office-agent-mode{font-size:9px}}
