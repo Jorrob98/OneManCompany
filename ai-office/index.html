@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101522">
+  <meta name="description" content="AI Office Studio, il tuo ufficio virtuale interattivo. Anteprima grafica e gestionale.">
+  <title>AI OFFICE — Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="./style.css" rel="stylesheet">
+  <script defer src="./app.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="rail" aria-label="Navigazione">
+    <a class="brand" href="#office" aria-label="AI Office Studio">
+      <span class="brand-emblem"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-words">AI<span>OFFICE</span><small>STUDIO / 01</small></span>
+    </a>
+    <div class="rail-kicker">WORKSPACE</div>
+    <nav class="nav-list" aria-label="Sezioni">
+      <button class="nav-link active" data-page="office"><span class="nav-icon">▦</span><span>Il mio ufficio</span><span class="nav-hint">01</span></button>
+      <button class="nav-link" data-page="people"><span class="nav-icon">♙</span><span>Dipendenti</span><span class="nav-hint" id="nav-people">04</span></button>
+      <button class="nav-link" data-page="tasks"><span class="nav-icon">◈</span><span>Incarichi</span><span class="nav-hint" id="nav-tasks">00</span></button>
+      <button class="nav-link" data-page="activity"><span class="nav-icon">◷</span><span>Attività</span><span class="nav-hint">↗</span></button>
+    </nav>
+    <div class="rail-bottom">
+      <div class="rail-panel">
+        <span class="rail-panel-icon">✦</span>
+        <strong>Un piccolo studio.<br>Grandi idee.</strong>
+        <p>Costruisci la tua squadra, assegna incarichi e prepara il tuo ufficio AI.</p>
+      </div>
+      <button id="aboutBtn" class="rail-status"><span class="led amber"></span><span>Anteprima locale</span><span>ⓘ</span></button>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="crumb"><span>WORKSPACE</span><span class="slash">/</span><strong id="crumbName">Ufficio</strong></div>
+      <div class="top-actions">
+        <div class="demo-pill"><span class="led amber"></span><span>MODALITÀ ANTEPRIMA</span></div>
+        <button class="mini-icon" id="infoBtn" aria-label="Informazioni sul funzionamento">?</button>
+        <button class="profile" id="profileBtn" title="Informazioni sul proprietario"><span class="profile-circle">J</span><span>Direttore</span><span class="arrow-sm">⌄</span></button>
+      </div>
+    </header>
+    <main>
+      <section class="page active" data-view="office" aria-label="Il mio ufficio">
+        <div class="heading-row">
+          <div>
+            <div class="eyebrow"><span class="tiny-square"></span> CONTROL ROOM <span class="eyebrow-line"></span> V1.0</div>
+            <h1>Buongiorno, <em>direttore.</em> <span class="wave">✳</span></h1>
+            <p class="section-subtitle">Il tuo team prende forma. Ogni grande progetto inizia da una scrivania.</p>
+          </div>
+          <button class="primary-button head-button" data-action="new-task"><span>＋</span> Nuovo incarico</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>PERSONE NEL TEAM</span><div class="stat-value"><strong id="statEmployees">04</strong><span class="stat-icon">◉</span></div><small>Profili gestiti nel browser</small></div>
+          <div class="stat"><span>DISPONIBILI</span><div class="stat-value"><strong id="statAvailable">04</strong><span class="stat-icon mint">↗</span></div><small>Pronti per nuovi incarichi</small></div>
+          <div class="stat"><span>INCARICHI IN ATTESA</span><div class="stat-value"><strong id="statTasks">00</strong><span class="stat-icon lilac">◈</span></div><small>Da collegare al motore AI</small></div>
+        </div>
+        <div class="office-grid">
+          <section class="room-card" aria-label="Ufficio virtuale interattivo">
+            <div class="panel-top">
+              <div><span class="window-dot mint-dot"></span><strong>Studio Floor</strong><span class="floor-suffix">/ HQ</span></div>
+              <div class="scene-actions"><span class="scene-label"><span class="pulse-dot"></span> VISUALIZZAZIONE LIVE*</span><button id="roomZoom" class="scene-action" title="Cambia inquadratura">⤢</button></div>
+            </div>
+            <div class="scene-wrap">
+              <canvas id="roomCanvas" role="img" aria-label="Ufficio isometrico animato. Seleziona un dipendente dal pannello per interagire."></canvas>
+              <div class="room-hint"><span class="hint-icon">⌖</span> Seleziona un personaggio</div>
+              <div class="scene-watermark"><span class="scene-watermark-spark">✦</span> AIO / STUDIO</div>
+            </div>
+            <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Pixel world / Creato per AI OFFICE</span><button id="roomMood" title="Alterna ambientazione">☼ Ambiente</button></div>
+          </section>
+          <aside class="side-stack">
+            <div class="employee-panel">
+              <div class="side-heading"><span>✦</span> IL TUO TEAM <span class="side-count" id="sideCount">04</span></div>
+              <div id="teamMiniList" class="team-mini-list"></div>
+              <button class="outline-button" data-action="hire">＋ Assumi un agente</button>
+            </div>
+            <div class="focus-panel" id="focusPanel"></div>
+          </aside>
+        </div>
+        <div class="under-grid">
+          <div class="notice"><span class="notice-icon">↳</span><div><strong>Una grafica che vive.</strong><p>Personaggi e ambienti animati sono originali. Le azioni gestionali sono vere in questa anteprima, ma vengono salvate solo su questo dispositivo.</p></div></div>
+          <button id="roadmapBtn" class="roadmap"><span>✧</span><strong>Il prossimo capitolo</strong><small>Telegram · Cloudflare · Agenti veri</small><span class="roadmap-arrow">↗</span></button>
+        </div>
+      </section>
+      <section class="page" data-view="people" aria-label="Dipendenti">
+        <div class="heading-row"><div><div class="eyebrow">THE PEOPLE / ORGANICO</div><h1>Le persone <em>contano.</em></h1><p class="section-subtitle">Assumi, metti in ferie, richiama o pensiona i tuoi agenti.</p></div><button class="primary-button head-button" data-action="hire">＋ Nuovo agente</button></div>
+        <div class="segmented"><button class="segment active" data-filter="all">Tutti</button><button class="segment" data-filter="available">Disponibili</button><button class="segment" data-filter="vacation">In ferie</button><button class="segment" data-filter="retired">Pensionati</button></div>
+        <div id="peopleGrid" class="people-grid"></div>
+      </section>
+      <section class="page" data-view="tasks" aria-label="Incarichi">
+        <div class="heading-row"><div><div class="eyebrow">TASK DESK / LAVORI</div><h1>Idee in <em>movimento.</em></h1><p class="section-subtitle">Prepara gli incarichi per i tuoi agenti. L'esecuzione AI arriverà con il collegamento Cloudflare.</p></div><button class="primary-button head-button" data-action="new-task">＋ Crea incarico</button></div>
+        <div class="tasks-info"><span>◉</span><p><strong>Motore non ancora connesso.</strong> Gli incarichi vengono salvati come bozze in attesa. Non simuliamo lavori AI completati.</p></div>
+        <div id="taskList" class="task-list"></div>
+      </section>
+      <section class="page" data-view="activity" aria-label="Attività">
+        <div class="heading-row"><div><div class="eyebrow">STUDIO LOG / DIARIO</div><h1>Ogni passo <em>conta.</em></h1><p class="section-subtitle">Cronologia delle operazioni effettuate in questa anteprima.</p></div><button class="secondary-button" id="resetDemo">Ripristina anteprima</button></div>
+        <div id="activityList" class="activity-list"></div>
+      </section>
+    </main>
+    <footer class="footbar"><span>✳ AI OFFICE STUDIO — CONCEPT ORIGINALE</span><span>* Live indica animazione grafica, non agenti AI operativi. Nessun dato viene sincronizzato.</span></footer>
+  </div>
+</div>
+<div class="modal-shell" id="modalShell" aria-hidden="true">
+  <div class="modal-backdrop" data-action="close"></div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><span class="modal-kicker">AI OFFICE / CONTROL</span><button class="close-btn" aria-label="Chiudi" data-action="close">✕</button></div>
+    <h2 id="modalTitle"></h2>
+    <div id="modalContent"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body></html>
