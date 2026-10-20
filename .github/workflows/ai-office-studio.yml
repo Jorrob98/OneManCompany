@@ -22,3 +22,7 @@ jobs:
         run: node --check ai-office/app.js
       - name: UI smoke tests
         run: node --test ai-office/studio.test.mjs
+      - name: Install browser test runner
+        run: npm install --no-save playwright-core@1.56.1
+      - name: UI interactions on desktop and mobile
+        run: node ai-office/browser.test.mjs
