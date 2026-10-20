@@ -14,13 +14,18 @@ try {
     await delay(250);
   }
   assert.ok(ready,"Local static server did not start");
-  browser=await chromium.launch({channel:"chrome",headless:true,args:["--no-sandbox"]});
+  browser=await chromium.launch({channel:"chrome",headless:true,args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader-webgl","--enable-unsafe-swiftshader"]});
   const page=await browser.newPage({viewport:{width:1400,height:900}});
   const errors=[];
   page.on("pageerror",e=>errors.push(String(e)));
   await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
   await page.locator("#statEmployees").waitFor();
   assert.equal(await page.locator("#statEmployees").innerText(),"04");
+  // This project must render actual WebGL geometry, not a static image.
+  await page.waitForFunction(() => window.__AI_OFFICE_3D_READY === true, null, {timeout:25000});
+  assert.equal(await page.locator(".office3d-canvas").count(), 1, "3D viewport is missing");
+  await page.screenshot({path:"ai-office/office-3d-desktop.png"});
+
 
   // Personnel interaction and durable local browser storage.
   await page.locator('[data-action="hire"]').first().click();
@@ -48,6 +53,10 @@ try {
   await page.waitForTimeout(300);
   assert.ok(await page.locator('[data-page="people"]').isVisible());
   const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
+  await page.goto("http://127.0.0.1:"+port+"/#office",{waitUntil:"domcontentloaded"});
+  await page.waitForFunction(() => window.__AI_OFFICE_3D_READY === true, null, {timeout:25000});
+  await page.screenshot({path:"ai-office/office-3d-mobile.png"});
+
   assert.ok(sizes.scroll<=sizes.viewport+2,"Horizontal overflow on mobile: "+JSON.stringify(sizes));
   assert.deepEqual(errors,[],"Browser runtime errors");
   console.log("Browser smoke test passed: hire + persist + task + mobile.");
