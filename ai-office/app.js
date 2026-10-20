@@ -73,6 +73,7 @@ function renderAll(){
   });
   if(!list.children.length)list.innerHTML='<p class="modal-text">Nessun dipendente attivo.</p>';
   renderFocus();renderPeople();renderTasks();renderActivity();save();
+  window.dispatchEvent(new Event('studio:changed'));
 }
 function renderFocus(){
   const a=state.agents.find(e=>e.id===state.selected);
@@ -413,6 +414,7 @@ $("roomZoom").addEventListener("click",()=>{largeView=!largeView;resizeCanvas();
 $("roomMood").addEventListener("click",()=>{state.mood=state.mood==="day"?"evening":"day";save();toast(state.mood==="day"?"Luce diurna":"Luce serale");});
 window.addEventListener("resize",resizeCanvas);
 if("ResizeObserver" in window)new ResizeObserver(resizeCanvas).observe(canvas);
+window.AIOStudio={getAgents:()=>state.agents,getSelected:()=>state.selected,getMood:()=>state.mood,select:id=>{if(state.agents.some(a=>a.id===id&&a.status!=="retired")){state.selected=id;renderAll();}}};
 renderAll();navigate(["office","people","tasks","activity"].includes(location.hash.slice(1))?location.hash.slice(1):"office");
 resizeCanvas();raf=requestAnimationFrame(loop);
 })();
