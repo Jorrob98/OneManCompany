@@ -25,7 +25,7 @@ jobs:
         run: |
           # Infrastructure-only updates are not a new OMC application release.
           # Preserve the mandatory version check for all source changes.
-          NON_INFRA=$(git diff --name-only origin/main...HEAD | grep -Ev '^(cloudflare/|\.github/workflows/(ci|ai-office-cloudflare)\.yml$)' || true)
+          NON_INFRA=$(git diff --name-only origin/main...HEAD | grep -Ev '^(cloudflare/|ai-office/|\.github/workflows/(ci|ai-office-cloudflare|ai-office-studio)\.yml$)' || true)
           if [ -z "$NON_INFRA" ]; then
             echo "Cloudflare integration / workflow-only change: OMC version unchanged."
             exit 0
