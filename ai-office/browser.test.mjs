@@ -36,6 +36,12 @@ try {
   }));
   assert.equal(agentState.status,"ready",JSON.stringify(agentState));
   assert.equal(agentState.agents.length,2);
+  assert.deepEqual(await page.evaluate(()=>window.AIOAgents3D.activeClips),["idle","walk"]);
+  const firstPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
+  await page.waitForTimeout(1100);
+  const nextPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
+  assert.notEqual(firstPosition,nextPosition,"Rigged avatar is not moving between office waypoints");
+
   assert.equal(await page.locator(".office-agent-canvas").count(),1);
   assert.equal(await page.locator(".office-agent-select").count(),2);
 
@@ -70,6 +76,9 @@ try {
   const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
   await page.goto("http://127.0.0.1:"+port+"/#office",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
+  const scroll = await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft);
+  assert.ok(scroll>80,"Mobile office did not pan to visible 3D people");
   await page.screenshot({path:"ai-office/office-premium-mobile.png"});
 
   assert.ok(sizes.scroll<=sizes.viewport+2,"Horizontal overflow on mobile: "+JSON.stringify(sizes));
