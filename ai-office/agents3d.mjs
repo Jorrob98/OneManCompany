@@ -265,6 +265,15 @@ function loop(){
   renderer.render(world,camera);
   info.frames++;
 }
+function centerForMobile(){
+  if(matchMedia("(max-width: 750px)").matches) {
+    const delta=surface.scrollWidth-stage.clientWidth;
+    if(delta>0) stage.scrollLeft=Math.max(0,delta*.52);
+  }
+}
+// Viewport may change after the module has already loaded (desktop -> phone emulation,
+// rotation, or returning to the office from another application section).
+window.addEventListener("resize",()=>requestAnimationFrame(centerForMobile));
 async function init() {
   if(!renderer)return;
   try {
@@ -273,9 +282,7 @@ async function init() {
     stage.classList.add("has-live-3d");
     sync();
     // Show the moving agents immediately on narrow phones (the office pans horizontally).
-    if(matchMedia("(max-width: 750px)").matches) {
-      stage.scrollLeft=Math.max(0,(surface.scrollWidth-stage.clientWidth)*.52);
-    }
+    centerForMobile();
     loop();
     window.dispatchEvent(new CustomEvent("studio:agents3d-ready",{detail:{count:info.agents.length}}));
   } catch(err){
