@@ -12,11 +12,11 @@ test("all four navigable sections exist",()=>{
     assert.match(html,new RegExp('data-page="'+page+'"'));
   }
 });
-test("canvas and mobile layouts are included",()=>{
+test("responsive premium office and mobile layouts are included",()=>{
   assert.match(html,/id="roomCanvas"/);
   assert.match(css,/@media\(max-width:750px\)/);
-  assert.match(js,/function scene\(t\)/);
-  assert.match(js,/function avatar\(a,index,time\)/);
+  assert.match(html,/assets\/penthouse-hero\.webp/);
+  assert.match(html,/id="penthouseMarkers"/);
 });
 test("actions manage real local prototype state",()=>{
   for(const command of ["hire","vacation","retire","reinstate","new-task","delete-task","confirm-reset"]){
@@ -37,8 +37,8 @@ test("prototype does not pretend to execute agent tasks",()=>{
   assert.match(js,/Non esegue attività AI/);
   assert.doesNotMatch(js,/TELEGRAM_BOT_TOKEN\s*=/);
 });
-test("UI uses original programmatic artwork rather than embedded screenshots",()=>{
+test("interface loads the approved premium office asset instead of the old 3D module",()=>{
   assert.doesNotMatch(html,/cover\.png|raw\.githubusercontent/);
-  assert.match(js,/function prism\(/);
-  assert.match(js,/function drawFloor\(/);
+  assert.match(html,/\.\/penthouse\.js/);
+  assert.doesNotMatch(html,/src="\.\/office3d\.js"/);
 });
