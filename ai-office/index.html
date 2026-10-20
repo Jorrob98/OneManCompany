@@ -12,6 +12,8 @@
   <link href="./style.css" rel="stylesheet">
   <script defer src="./app.js"></script>
   <script defer src="./penthouse.js"></script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+  <script type="module" src="./agents3d.mjs"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -76,7 +78,7 @@
                 </div>
                 <div class="penthouse-counter"><span class="pulse-dot"></span> PRESENTI <strong id="penthousePresent">04</strong></div>
               </div>
-              <div class="room-hint"><span class="hint-icon">⌖</span> Tocca i segnaposto degli agenti</div>
+              <div class="room-hint"><span class="hint-icon">⌖</span> Seleziona gli agenti 3D · spostamenti dimostrativi</div>
               <div class="scene-watermark"><span class="scene-watermark-spark">✦</span> AIO / STUDIO</div>
             </div>
             <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Penthouse Control · Atmosfera premium</span><button id="roomMood" title="Alterna ambientazione">☼ Ambiente</button></div>
@@ -91,7 +93,7 @@
           </aside>
         </div>
         <div class="under-grid">
-          <div class="notice"><span class="notice-icon">↳</span><div><strong>Una grafica che vive.</strong><p>Scena illustrata premium con agenti selezionabili. Assunzioni, ferie e incarichi vengono gestiti e salvati nel browser; il motore AI è ancora da collegare.</p></div></div>
+          <div class="notice"><span class="notice-icon">↳</span><div><strong>Una grafica che vive.</strong><p>Due agenti 3D animati camminano e reagiscono ai cambiamenti dell’organico. Le animazioni non indicano lavoro AI eseguito; ferie, assunzioni e incarichi restano salvati nel browser.</p></div></div>
           <button id="roadmapBtn" class="roadmap"><span>✧</span><strong>Il prossimo capitolo</strong><small>Telegram · Cloudflare · Agenti veri</small><span class="roadmap-arrow">↗</span></button>
         </div>
       </section>
