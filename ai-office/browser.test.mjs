@@ -77,6 +77,7 @@ try {
   await page.goto("http://127.0.0.1:"+port+"/#office",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
   await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
+  await page.waitForFunction(()=>document.querySelector("#penthouseStage")?.scrollLeft>80,null,{timeout:5000});
   const scroll = await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft);
   assert.ok(scroll>80,"Mobile office did not pan to visible 3D people");
   await page.screenshot({path:"ai-office/office-premium-mobile.png"});
