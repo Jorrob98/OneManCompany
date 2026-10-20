@@ -1,10 +1,14 @@
-# AI OFFICE — agenti 3D animati (milestone 1)
+# AI OFFICE — agenti 3D animati (milestone 2)
 
 ## Implementato
 
-- **Due avatar 3D reali**, riggati e caricati come GLB da CodeLove.
+- **Quattro avatar 3D reali**, riggati e caricati come GLB da CodeLove.
 - Animazioni separate di **camminata** e **idle** tramite `THREE.AnimationMixer`.
-- Spostamenti calcolati tra ingresso, postazione, area relax.
+- Spostamenti calcolati tra ingresso, postazione, area relax e sala riunioni, con transizioni fluide.
+- Per ogni agente disponibile: comandi visivi **Scrivania / Riunione / Pausa** direttamente dal profilo.
+- Animazione **talk** per pausa e meeting, se il clip remoto è disponibile; altrimenti idle.
+- Nome e stato dell'animazione sopra ciascun avatar; uscita animata durante ferie e pensionamento.
+- Fino a quattro avatar mobili simultanei in questa fase; agenti aggiuntivi restano gestibili dal pannello.
 - Selezione degli agenti tramite controlli HTML accessibili, collegata al pannello dipendente.
 - Cambio stato ferie / pensionamento: il personaggio presente raggiunge l'uscita e scompare.
 - Desktop/mobile; in smartphone la visuale scorre e si centra sui personaggi.
@@ -16,7 +20,7 @@
 Questo è un prototipo visivo verificabile, **non ancora un sistema autonomo AI**.
 Gli incarichi restano bozze in localStorage; il movimento degli avatar simula la vita d'ufficio, non l'esecuzione di lavoro.
 
-**Limite grafico noto:** l'immagine ambientale approvata include figure umane statiche. Gli unici avatar 3D realmente mobili in questa fase sono i due nuovi soggetti sovrapposti. La futura pulizia/sostituzione del background servirà a evitare doppioni e allineare completamente le prospettive. È preferibile preservare l'impatto scenografico approvato piuttosto che sostituirlo con 3D grezzo.
+**Limite grafico noto:** l'immagine ambientale approvata include figure umane statiche. Gli unici avatar 3D realmente mobili in questa fase sono i quattro nuovi soggetti sovrapposti. La futura pulizia/sostituzione del background servirà a evitare doppioni e allineare completamente le prospettive. È preferibile preservare l'impatto scenografico approvato piuttosto che sostituirlo con 3D grezzo.
 
 ## Modelli/licenze
 
@@ -39,4 +43,4 @@ node --test ai-office/studio.test.mjs
 node ai-office/browser.test.mjs
 ```
 
-GitHub Actions **AI Office Studio UI** avvia Chrome reale in test, controlla GLB, numero modelli, navigazione, assunzioni, incarichi, localStorage e responsive. I file e il vecchio motore `office3d.js` restano nella cartella per tracciabilità, ma **non sono importati nella pagina pubblica**.
+GitHub Actions **AI Office Studio UI** avvia Chrome reale in test, controlla GLB, quattro modelli, comandi di meeting e ritorno alla scrivania, navigazione, assunzioni, incarichi, localStorage e responsive. I file e il vecchio motore `office3d.js` restano nella cartella per tracciabilità, ma **non sono importati nella pagina pubblica**.
