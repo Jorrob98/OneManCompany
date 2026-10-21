@@ -41,7 +41,7 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 
 **Limiti:** la scena resta un render illustrato 2.5D, non uno spazio 3D ricostruito. La prospettiva e le occlusioni sono calibrate sull'immagine e non costituiscono fisica completa. Le luci e i dati dei monitor sono effetti ambientali dimostrativi; non certificano attività svolte dal motore AI. Il controllo automatico usa l'ora del browser.
 
-## Sprint 03 — Percorsi e comportamenti (21–30) — IMPLEMENTATO, QA IN CORSO
+## Sprint 03 — Percorsi e comportamenti (21–30) ✅ Browser e regressione verificati
 
 21. **Percorsi calcolati:** rete di corridoi 2.5D con ricerca del percorso più breve (Dijkstra) in `movement.mjs`.
 22. **Incontri fra dipendenti:** rilevamento di vicinanza e precedenza deterministica; un agente rallenta/attende se l'altro sta attraversando il passaggio.
@@ -54,7 +54,9 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 29. **Riunioni:** percorso tramite ingresso laterale della sala riunioni, poi permanenza e ripresa del lavoro.
 30. **Movimenti variabili:** velocità individuali, partenze e arrivi smorzati, tempi di lavoro differenziati e niente spostamenti automatici con preferenza reduced-motion.
 
-**Test dedicati:** `movement.test.mjs` per connettività del grafo, rotte attorno ai mobili, deviazioni su corridoi occupati e differenziazione dei ruoli; `browser.test.mjs` per percorsi realmente animati, scrivanie fisse, sala riunioni, lounge, ferie e ritorno, oltre alle regressioni dell'interfaccia. Include correzione di una precedente regressione su etichette mobile.
+**Test dedicati:** test GitHub Actions AI Office Studio UI run #39626074489 PASS, screenshot desktop/mobile ispezionati. `movement.test.mjs` per connettività del grafo, rotte attorno ai mobili, deviazioni su corridoi occupati e differenziazione dei ruoli; `browser.test.mjs` per percorsi realmente animati, scrivanie fisse, sala riunioni, lounge, ferie e ritorno, oltre alle regressioni dell'interfaccia. Include correzione di una precedente regressione su etichette mobile.
+
+**Stato release:** completati i 10 interventi dello sprint. Preview statica demo con 4 avatar contemporanei, senza motore AI reale. Altri workflow generali possono risultare ancora in esecuzione.
 
 **Limite dichiarato:** la navigazione è vincolata a corsie mappate manualmente nell'illustrazione. Il rilevamento tra dipendenti è approssimato; non esiste una mappa fisica 3D di collisione o una simulazione di folla, e non è connessa alcuna AI operativa.
 
