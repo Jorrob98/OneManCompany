@@ -73,8 +73,6 @@ try {
 
   assert.equal(await page.locator(".aio-monitor-ui").count(),4);
   assert.equal(await page.locator(".aio-zone-bar button").count(),3);
-  assert.equal(await page.locator('.office-agent-select:not(.selected) .office-agent-mode').first().evaluate(
-    el=>getComputedStyle(el).display),"none","Mobile employee labels crowd the office");
 
   const firstWorker=await page.evaluate(()=>window.AIOAgents3D.snapshot()[0]);
   assert.ok(firstWorker.depthScale>=.93&&firstWorker.depthScale<=1.06,"Perspective scaling did not initialize");
@@ -197,6 +195,8 @@ try {
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
   await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
   await page.waitForFunction(()=>document.querySelector("#penthouseStage")?.scrollLeft>80,null,{timeout:5000});
+  assert.equal(await page.locator('.office-agent-select:not(.selected) .office-agent-mode').first().evaluate(
+    el=>getComputedStyle(el).display),"none","Mobile employee labels crowd the office");
   const scroll = await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft);
   assert.ok(scroll>80,"Mobile office did not pan to visible 3D people");
   assert.equal(await page.locator(".aio-zone-bar button").count(),3);
