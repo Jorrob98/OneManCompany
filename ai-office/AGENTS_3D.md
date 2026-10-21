@@ -48,3 +48,7 @@ GitHub Actions **AI Office Studio UI** avvia Chrome reale in test, controlla GLB
 ## Ambientazione senza persone (21 ottobre 2026)
 
 Il sito usa `assets/penthouse-empty-v2.webp`, scena nuova senza personaggi incorporati e con le aree di lavoro vuote. L'originale `penthouse-hero.webp` è conservato come backup. Waypoint e hotspot sono allineati ai mobili del nuovo render. Non è una simulazione 3D completa dell'arredamento: gli avatar vengono sovrapposti all'immagine 2.5D.
+
+## Living Office V3 — 21 ottobre 2026
+
+Lo sfondo pubblicato è ora `assets/penthouse-living-v3.webp`, un nuovo ambiente senza figure statiche con grande open space, postazioni multiple e sala riunioni. `agents3d.mjs` mantiene i quattro avatar reali e aggiunge gesti di lettura/riflessione al computer, conversazioni, percorsi con passaggi nei corridoi e soste più lunghe alle scrivanie, così non vagano continuamente. I gesti sono rappresentazioni visive, non esecuzioni AI. Il nuovo ambiente è 2.5D e resta un asset illustrato: i modelli 3D sono sovrapposti, senza collisioni complete con l'arredamento.
