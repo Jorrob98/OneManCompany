@@ -56,6 +56,37 @@ try {
 
   assert.equal(await page.locator(".office-agent-canvas").count(),1);
   assert.equal(await page.locator(".office-agent-select").count(),4);
+
+  // Sprint 02: verify real environment layers, responsive monitor effects,
+  // depth-corrected 3D workers, four scene lighting modes and room navigation.
+  await page.waitForFunction(()=>window.AIOEnvironment?.getStatus?.().monitors===4,null,{timeout:15000});
+  assert.equal(await page.locator(".aio-furniture-cutout").count(),2);
+  assert.equal(await page.locator(".aio-monitor-ui").count(),4);
+  assert.equal(await page.locator(".aio-zone-bar button").count(),3);
+  const firstWorker=await page.evaluate(()=>window.AIOAgents3D.snapshot()[0]);
+  assert.ok(firstWorker.depthScale>=.93&&firstWorker.depthScale<=1.06,"Perspective scaling did not initialize");
+  assert.ok(firstWorker.shadowOpacity>.25,"Contact shadow is not visible");
+  const moodButton=page.locator("#roomMood");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere"),"day");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere"),"night");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere-setting"),"auto");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere"),"evening");
+  await page.locator('[data-office-zone="meeting"]').click();
+  assert.equal(await page.locator('[data-office-zone="meeting"]').getAttribute("aria-pressed"),"true");
+  assert.equal(await page.locator("#aioZoneCaption").innerText(),"Sala riunioni");
+  await page.locator('[data-office-zone="meeting"]').click();
+  assert.equal(await page.locator('[data-office-zone="meeting"]').getAttribute("aria-pressed"),"false");
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-camera-mode"),"close");
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-camera-mode"),"focus");
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-camera-mode"),"overview");
+
   // A real UI click must direct the selected human agent to a visible work zone.
   await page.locator('[data-action="agent-meeting"][data-id="a1"]').click();
   assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
@@ -143,6 +174,11 @@ try {
   await page.waitForFunction(()=>document.querySelector("#penthouseStage")?.scrollLeft>80,null,{timeout:5000});
   const scroll = await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft);
   assert.ok(scroll>80,"Mobile office did not pan to visible 3D people");
+  assert.equal(await page.locator(".aio-zone-bar button").count(),3);
+  await page.locator('[data-office-zone="lounge"]').click();
+  assert.equal(await page.locator('[data-office-zone="lounge"]').getAttribute("aria-pressed"),"true");
+  assert.ok((await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft))>0);
+
   await page.screenshot({path:"ai-office/office-premium-mobile.png"});
 
   assert.ok(sizes.scroll<=sizes.viewport+2,"Horizontal overflow on mobile: "+JSON.stringify(sizes));
