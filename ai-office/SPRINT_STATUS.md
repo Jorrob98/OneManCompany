@@ -41,10 +41,27 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 
 **Limiti:** la scena resta un render illustrato 2.5D, non uno spazio 3D ricostruito. La prospettiva e le occlusioni sono calibrate sull'immagine e non costituiscono fisica completa. Le luci e i dati dei monitor sono effetti ambientali dimostrativi; non certificano attività svolte dal motore AI. Il controllo automatico usa l'ora del browser.
 
+## Sprint 03 — Percorsi e comportamenti (21–30) — IMPLEMENTATO, QA IN CORSO
+
+21. **Percorsi calcolati:** rete di corridoi 2.5D con ricerca del percorso più breve (Dijkstra) in `movement.mjs`.
+22. **Incontri fra dipendenti:** rilevamento di vicinanza e precedenza deterministica; un agente rallenta/attende se l'altro sta attraversando il passaggio.
+23. **Arredi:** uscite dalle scrivanie, varchi e corsie predefiniti attorno all'isola centrale, senza attraversare direttamente postazioni durante i comandi.
+24. **Postazioni riservate:** i quattro posti hanno slot stabili anche quando altri dipendenti vanno in ferie. Massimo quattro avatar simultanei nella versione attuale.
+25. **Routine per ruolo:** manager/responsabili più spesso in meeting, creativi più spesso in lounge, analisti lavorano più a lungo al computer, con tempi variati.
+26. **Assunzioni:** nuovi agenti disponibili entrano dal proprio ingresso e raggiungono la postazione libera.
+27. **Ferie:** comando ferie porta verso l'uscita; un richiamo durante il tragitto interrompe l'uscita e riporta al lavoro.
+28. **Pausa caffè:** la lounge è una destinazione reale della rete, con un periodo di sosta e ritorno alla scrivania.
+29. **Riunioni:** percorso tramite ingresso laterale della sala riunioni, poi permanenza e ripresa del lavoro.
+30. **Movimenti variabili:** velocità individuali, partenze e arrivi smorzati, tempi di lavoro differenziati e niente spostamenti automatici con preferenza reduced-motion.
+
+**Test dedicati:** `movement.test.mjs` per connettività del grafo, rotte attorno ai mobili, deviazioni su corridoi occupati e differenziazione dei ruoli; `browser.test.mjs` per percorsi realmente animati, scrivanie fisse, sala riunioni, lounge, ferie e ritorno, oltre alle regressioni dell'interfaccia. Include correzione di una precedente regressione su etichette mobile.
+
+**Limite dichiarato:** la navigazione è vincolata a corsie mappate manualmente nell'illustrazione. Il rilevamento tra dipendenti è approssimato; non esiste una mappa fisica 3D di collisione o una simulazione di folla, e non è connessa alcuna AI operativa.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
-- [ ] 03 — Percorsi intelligenti: collisioni, assegnazione postazioni, entrate/uscite, routine
+- [x] 03 — Percorsi intelligenti: collisioni approssimate tra agenti, assegnazione postazioni, entrate/uscite, routine
 - [ ] 04 — Gestione del personale: ruoli, competenze, reparti, ferie e promozioni
 - [ ] 05 — Interazioni tra agenti: riunioni, collaborazione, scambi verificabili
 - [ ] 06 — Motore AI realmente operativo, strumenti, verifiche e autorizzazioni
