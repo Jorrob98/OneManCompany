@@ -41,6 +41,10 @@ try {
   }));
   assert.equal(agentState.status,"ready",JSON.stringify(agentState));
   assert.equal(agentState.agents.length,4);
+  const uniqueModels=await page.evaluate(()=>window.AIOAgents3D.snapshot().map(a=>a.modelStyle));
+  assert.deepEqual(uniqueModels,["f1","m1","f2","m2"],"Employees are still duplicated 3D characters");
+  assert.equal((await page.evaluate(()=>window.AIOAgents3D.modelVariants)).length,8);
+
   const clips=await page.evaluate(()=>window.AIOAgents3D.activeClips);
   assert.ok(clips.includes("idle")&&clips.includes("walk"),"Main GLB movement clips missing");
   assert.ok(clips.some(c=>c==="think"||c==="look"),"Natural office gestures missing");
@@ -90,6 +94,22 @@ try {
 
   await page.screenshot({path:"ai-office/office-premium-desktop.png"});
 
+
+  // Per-employee GLB personalization: choose another actual face/hair/outfit.
+  await page.locator('[data-action="appearance"][data-id="a1"]').click();
+  assert.equal(await page.locator("#appearanceCharacter option").count(),8);
+  await page.locator("#appearanceCharacter").selectOption("f3");
+  await page.locator("#appearanceColor").selectOption("gold");
+  await page.locator('#appearanceForm button[type="submit"]').click();
+  await page.waitForFunction(()=>{
+    const n=window.AIOAgents3D.snapshot().find(a=>a.id==="a1");
+    return n?.modelStyle==="f3" && n.color==="gold";
+  },null,{timeout:25000});
+  assert.equal(await page.locator('.office-agent-select[data-agent-id="a1"]').getAttribute("data-color"),"gold");
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready" &&
+    window.AIOAgents3D.snapshot().some(a=>a.id==="a1" && a.modelStyle==="f3"),null,{timeout:45000});
+  assert.equal(await page.locator('[data-action="appearance"][data-id="a1"]').count(),1);
 
   // Personnel interaction and durable local browser storage.
   await page.locator('[data-action="hire"]').first().click();
