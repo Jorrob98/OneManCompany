@@ -133,6 +133,12 @@
     const pos=focusPoint();
     surface.style.setProperty("--office-focus-x",pos.x+"%");
     surface.style.setProperty("--office-focus-y",pos.y+"%");
+    // In portrait layout pan only inside the office, never the whole page.
+    if(stage.clientWidth<surface.clientWidth){
+      const left=Math.max(0,Math.min(surface.scrollWidth-stage.clientWidth,
+        surface.scrollWidth*pos.x/100-stage.clientWidth*.5));
+      stage.scrollTo({left,behavior:reduced.matches?"instant":"smooth"});
+    }
   }
   function render(){atmosphere();syncMonitors();syncCamera();}
   window.AIOEnvironment={
