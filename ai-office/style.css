@@ -140,3 +140,21 @@
 @media (prefers-reduced-motion:reduce){
   .penthouse-surface,.penthouse-artwork{transition:none!important}
 }
+
+
+/* AI OFFICE — Sprint 1: editable, persistent character presentation. */
+.appearance-open{
+ display:block;width:100%;margin-top:12px;padding:10px 13px;
+ background:linear-gradient(112deg,rgba(73,97,115,.46),rgba(49,51,74,.8));
+ border:1px solid rgba(141,174,187,.44);border-radius:10px;
+ color:#f3dfbe;cursor:pointer;text-align:left;font-size:12px;
+ transition:border-color .16s,background .16s;
+}
+.appearance-open:hover,.appearance-open:focus-visible{
+ border-color:#e7bd8f;background:rgba(51,70,88,.95);outline-offset:2px;
+}
+.office-agent-select[data-color="coral"]{border-color:#e99f85}
+.office-agent-select[data-color="mint"]{border-color:#78d9b2}
+.office-agent-select[data-color="lavender"]{border-color:#bba9ee}
+.office-agent-select[data-color="blue"]{border-color:#83b6f2}
+.office-agent-select[data-color="gold"]{border-color:#f5c77f}
