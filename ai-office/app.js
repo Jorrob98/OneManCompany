@@ -6,11 +6,21 @@ const KEY="ai-office-studio-v1",MAX=8;
 const stations=[[2.45,3.25],[6.75,2.95],[3.65,6.75],[7.95,6.35],[9.15,3.7],[1.3,6.35],[9.3,7.7],[5.7,4.9]];
 const roles=["Programmatore","Designer","Ricercatore","Revisore QA","Coordinatore","Automazioni","Analista","Comunicazione"];
 const colors=["coral","mint","lavender","blue","gold"];
+// Eight genuinely different licensed GLB human models, not two repeated costumes.
+const characterStyles=[
+ ["f1","Donna · Executive 1"],["f2","Donna · Executive 2"],
+ ["f3","Donna · Executive 3"],["f4","Donna · Executive 4"],
+ ["m1","Uomo · Executive 1"],["m2","Uomo · Executive 2"],
+ ["m3","Uomo · Executive 3"],["m4","Uomo · Executive 4"]
+];
+const validStyle=id=>characterStyles.some(([key])=>id===key);
+const characterChoices=value=>characterStyles.map(([key,label])=>
+ '<option value="'+key+'" '+(value===key?"selected":"")+'>'+label+'</option>').join("");
 const templates=[
-  {id:"a1",name:"Nora",role:"Coordinatore",color:"coral",avatar:"👩🏻‍💼",status:"available"},
-  {id:"a2",name:"Leo",role:"Programmatore",color:"blue",avatar:"👨🏽‍💻",status:"available"},
-  {id:"a3",name:"Mia",role:"Designer",color:"lavender",avatar:"👩🏾‍🎨",status:"available"},
-  {id:"a4",name:"Teo",role:"Revisore QA",color:"mint",avatar:"🧑🏼‍🔬",status:"available"}
+  {id:"a1",name:"Nora",role:"Coordinatore",color:"coral",modelStyle:"f1",avatar:"👩🏻‍💼",status:"available"},
+  {id:"a2",name:"Leo",role:"Programmatore",color:"blue",modelStyle:"m1",avatar:"👨🏽‍💻",status:"available"},
+  {id:"a3",name:"Mia",role:"Designer",color:"lavender",modelStyle:"f2",avatar:"👩🏾‍🎨",status:"available"},
+  {id:"a4",name:"Teo",role:"Revisore QA",color:"mint",modelStyle:"m2",avatar:"🧑🏼‍🔬",status:"available"}
 ];
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -23,7 +33,8 @@ function load(){
       agents:data.agents.slice(0,MAX).filter(a=>a&&typeof a.name==="string"&&typeof a.id==="string").map(a=>({
         id:String(a.id).slice(0,55),name:String(a.name).slice(0,30),role:String(a.role).slice(0,35),
         status:["available","vacation","retired"].includes(a.status)?a.status:"available",
-        avatar:String(a.avatar||"🧑‍💼").slice(0,12),color:colors.includes(a.color)?a.color:"blue"
+        avatar:String(a.avatar||"🧑‍💼").slice(0,12),color:colors.includes(a.color)?a.color:"blue",
+        modelStyle:validStyle(a.modelStyle)?a.modelStyle:(a.id==="a1"?"f1":a.id==="a3"?"f2":a.id==="a4"?"m2":"m1")
       })),
       tasks:data.tasks.slice(0,80).filter(t=>t&&typeof t.title==="string").map(t=>({
         id:String(t.id),title:String(t.title).slice(0,75),detail:String(t.detail||"").slice(0,450),
@@ -88,6 +99,7 @@ function renderFocus(){
     '<div class="focus-buttons"><button data-action="new-task" data-id="'+esc(a.id)+'">＋ Incarico</button>'+
     '<button data-action="vacation" data-id="'+esc(a.id)+'">'+(a.status==="vacation"?"↩ Richiama":"☀ Ferie")+'</button>'+
     '<button class="danger" data-action="retire" data-id="'+esc(a.id)+'">Pensiona</button></div>'+
+    '<button class="appearance-open" data-action="appearance" data-id="'+esc(a.id)+'">✦ Personalizza personaggio 3D</button>'+
     (a.status==="available"?'<div class="agent-director"><div class="focus-eyebrow">MOVIMENTI 3D · DEMO VISIVA</div>'+
     '<div class="focus-buttons"><button data-action="agent-desk" data-id="'+esc(a.id)+'">⌑ Scrivania</button>'+
     '<button data-action="agent-meeting" data-id="'+esc(a.id)+'">♧ Riunione</button>'+
@@ -135,8 +147,21 @@ function hire(){
  '<form id="hireForm"><div class="field"><label for="employeeName">Nome del dipendente</label><input id="employeeName" name="name" required maxlength="30" autocomplete="off" placeholder="Es. Sofia"></div>'+
  '<div class="field"><label for="employeeRole">Professione</label><select id="employeeRole" name="role">'+roles.map(r=>'<option>'+esc(r)+'</option>').join("")+'</select></div>'+
  '<div class="field"><label for="employeeStyle">Stile del personaggio</label><select id="employeeStyle" name="color"><option value="coral">Corallo</option><option value="mint">Menta</option><option value="lavender">Lavanda</option><option value="blue">Blu</option><option value="gold">Oro</option></select></div>'+
+ '<div class="field"><label for="employeeModelStyle">Modello 3D / volto e capelli</label><select id="employeeModelStyle" name="modelStyle">'+characterChoices("f1")+'</select></div>'+
  '<p class="modal-note">Il profilo apparirà realmente nella stanza animata e verrà salvato nel browser.</p>'+
  '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Assumi agente ↗</button></div></form>');
+}
+function appearance(id){
+ const a=state.agents.find(v=>v.id===id);
+ if(!a||a.status==="retired")return;
+ openModal("Personalizza "+a.name,
+ '<p class="modal-text">Scegli tra 8 persone 3D realmente differenti. I modelli includono propri volti, capelli e abiti. Le modifiche si salvano nel browser.</p>'+
+ '<form id="appearanceForm"><input type="hidden" name="agentId" value="'+esc(a.id)+'">'+
+ '<div class="field"><label for="appearanceCharacter">Modello 3D</label><select id="appearanceCharacter" name="modelStyle">'+characterChoices(a.modelStyle)+'</select></div>'+
+ '<div class="field"><label for="appearanceColor">Colore identificativo del dipendente</label><select id="appearanceColor" name="color">'+
+ colors.map(c=>'<option value="'+c+'" '+(a.color===c?"selected":"")+'>'+c+'</option>').join("")+'</select></div>'+
+ '<p class="modal-note">Il colore personalizza il contrassegno 3D e le etichette. Il colore degli abiti dipende dal modello scelto.</p>'+
+ '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Salva aspetto</button></div></form>');
 }
 function newTask(id){
  const people=state.agents.filter(a=>a.status==="available");
@@ -149,7 +174,7 @@ function newTask(id){
  '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Salva incarico ↗</button></div></form>');
 }
 function info(){
- openModal("Che cosa funziona già?",'<p class="modal-text"><strong>Questa è una vera anteprima interattiva.</strong> La scena premium contiene due agenti 3D con modelli e animazioni professionali su licenza MIT, integrati da AI OFFICE. Le persone presenti nello sfondo sono ancora parte del render e non sono agenti controllabili.</p>'+
+ openModal("Che cosa funziona già?",'<p class="modal-text"><strong>Questa è una vera anteprima interattiva.</strong> La scena premium contiene fino a quattro agenti con modelli GLB riggati professionali, animazioni e personalizzazione. Lo sfondo non contiene dipendenti statici.</p>'+
  '<p class="modal-text">Puoi assumere agenti, metterli in ferie, pensionarli, recuperarli e creare incarichi: i cambiamenti vengono salvati <strong>solo nel browser</strong> che stai usando.</p>'+
  '<p class="modal-note">Non è ancora collegata a Cloudflare, Telegram, al database o al motore multi-agente di OneManCompany. Non esegue attività AI e non sincronizza i dati tra i dispositivi.</p>'+
  '<div class="modal-actions"><button class="primary-button" data-action="close">Ho capito</button></div>');
@@ -165,6 +190,7 @@ function action(kind,id){
  const a=state.agents.find(e=>e.id===id);
  if(kind==="close"){closeModal();return;}
  if(kind==="hire"){hire();return;}
+ if(kind==="appearance"&&a){appearance(id);return;}
  if(kind==="new-task"){newTask(id||state.selected);return;}
  if(["agent-desk","agent-meeting","agent-lounge"].includes(kind)){
    if(!a||a.status!=="available"){toast("Il dipendente non è disponibile.");return;}
@@ -211,10 +237,24 @@ $("modalShell").addEventListener("submit",event=>{
     if(!name||state.agents.length>=MAX)return;
     const role=String(fd.get("role")),color=String(fd.get("color"));
     const emoji=({Programmatore:"👨‍💻",Designer:"👩‍🎨",Ricercatore:"🧑‍🔬","Revisore QA":"🧑‍🔬",Coordinatore:"👩‍💼",Automazioni:"🤖",Analista:"🧑‍💼",Comunicazione:"👩‍💻"})[role]||"🧑‍💼";
-    const agent={id:"a"+Date.now().toString(36),name:name.slice(0,30),role:roles.includes(role)?role:"Analista",color:colors.includes(color)?color:"blue",avatar:emoji,status:"available"};
+    const chosenStyle=String(fd.get("modelStyle")||"f1");
+    const agent={id:"a"+Date.now().toString(36),name:name.slice(0,30),role:roles.includes(role)?role:"Analista",color:colors.includes(color)?color:"blue",modelStyle:validStyle(chosenStyle)?chosenStyle:"f1",avatar:emoji,status:"available"};
     state.agents.push(agent);state.selected=agent.id;
     activity("＋",agent.name+" è entrato nel team come "+agent.role+".");
     closeModal();renderAll();navigate("office");toast("Benvenuto nel team, "+agent.name+"!");
+  }
+  if(event.target.id==="appearanceForm"){
+    event.preventDefault();
+    const fd=new FormData(event.target);
+    const a=state.agents.find(v=>v.id===String(fd.get("agentId")||""));
+    if(!a||a.status==="retired")return;
+    const style=String(fd.get("modelStyle")||"");
+    const color=String(fd.get("color")||"");
+    if(!validStyle(style)||!colors.includes(color))return;
+    a.modelStyle=style;a.color=color;
+    activity("✦","Aspetto di "+a.name+" aggiornato.");
+    closeModal();renderAll();toast("Personaggio 3D aggiornato.");
+    return;
   }
   if(event.target.id==="taskForm"){
     event.preventDefault();const fd=new FormData(event.target),title=String(fd.get("title")||"").trim();
