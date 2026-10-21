@@ -1,5 +1,5 @@
 /**
- * AI OFFICE — Live 3D Agents, milestone 2 (four people, directed interactions).
+ * AI OFFICE — Living Office 3: natural work loops, posture and movement.
  * Real GLB rigged humans + separate Biped animation clips; three.js/WebGL.
  * MIT model/clip licensing: https://models.codelove.in/licensing
  * Motion is only a simulation of office presence, NEVER evidence of task execution.
@@ -21,11 +21,15 @@ const modelURLs = {
 const clipURLs = {
   female: {
     idle: assetBase + "/animations/f_idle_neutral_01.glb",
+    look: assetBase + "/animations/f_idle_look_around_01.glb",
+    think: assetBase + "/animations/f_gestic_thoughtful_01.glb",
     walk: assetBase + "/animations/f_walk_neutral_01.glb",
     talk: assetBase + "/animations/f_talk_01.glb"
   },
   male: {
     idle: assetBase + "/animations/m_idle_neutral_01.glb",
+    look: assetBase + "/animations/m_idle_look_around_01.glb",
+    think: assetBase + "/animations/m_gestic_thoughtful_01.glb",
     walk: assetBase + "/animations/m_walk_neutral_01.glb",
     talk: assetBase + "/animations/m_talk_01.glb"
   }
@@ -131,7 +135,7 @@ async function preload() {
       throw new Error("Missing actual GLB idle/walk animation clips: "+sex);
     assets[sex]=bundle;
   }
-  info.activeClips=["idle","walk"];
+  info.activeClips=["idle","walk","talk","look","think"].filter(name=>assets.female.animations[name] && assets.male.animations[name]);
 }
 function select(id) {
   bridge.select(id);
@@ -180,13 +184,31 @@ function build(a,index) {
       actions[name].setLoop(THREE.LoopRepeat,Infinity);
     }
   });
+  // Each worker has their own rhythm and a reserved desk; their motions are visual only.
   const actor={id:a.id,sex,index,holder,body,mixer,actions,state:"",point:"entry",
     goal:"desk",from:place(template.entry),to:place(template.desk),travel:0,wait:0,
-    next:0,routeIndex:0,closing:false,manualUntil:0,hit:null};
+    next:0,routeIndex:0,closing:false,manualUntil:0,hit:null,
+    motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
+    path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
+    handBones:[],arrivedCount:0,activity:"Ingresso"};
+  // Use the GLB's actual Biped forearms for subtle computer-working gestures.
+  body.traverse(node=>{
+    if(!node.isBone)return;
+    const name=node.name.toLowerCase();
+    if(/(forearm|fore_arm|lowerarm|lower_arm)/.test(name))actor.handBones.push(node);
+  });
   nameButton(a,actor);
   stagePeople.set(a.id,actor);
-  updateClip(actor,"walk");
+  moveToZone(actor,"desk");
   info.agents=Array.from(stagePeople.keys());
+}
+function postureClip(actor){
+  // There is no real sitting/typing clip in the free pack: use short natural
+  // look/think gestures and arm movement, without faking an actual seated rig.
+  if(actor.point==="desk")return actor.actions.think && actor.workMode==="think"?"think":
+    actor.actions.look && actor.workMode==="look"?"look":"idle";
+  if(actor.point==="meeting")return actor.actions.talk?"talk":"idle";
+  return actor.actions.look?"look":"idle";
 }
 function updateClip(actor,next){
   if(actor.state===next)return;
@@ -200,24 +222,46 @@ function updateClip(actor,next){
   const status=actor.hit?.querySelector(".office-agent-mode");
   if(status){
     status.textContent=actor.closing?"In uscita":
-      next==="walk"?"In movimento":
-      actor.point==="meeting"?"In riunione":
-      actor.point==="lounge"?"In pausa":"Alla scrivania";
+      next==="walk"?"Si sposta…":
+      actor.point==="meeting"?"Parla con colleghi":
+      actor.point==="lounge"?"In pausa":
+      next==="think"?"Controlla i dati":
+      next==="look"?"Legge il monitor":"Al computer";
   }
+}
+// Corridor waypoints steer workers around the central console island. Positions
+// are projected into the fixed office artwork; this is 2.5D, not real collisions.
+function routeBetween(actor,zone){
+  const pos=actor.holder.position;
+  const fromX=(pos.x/DIM_X+.5)*100, fromY=(.5-pos.y/DIM_Y)*100;
+  const target=stages[actor.index][zone];
+  if(zone==="entry")return [{x:Math.max(38,Math.min(85,fromX)),y:85},target];
+  if(zone==="meeting"){
+    if(fromX<35)return [target];
+    return [{x:Math.max(37,Math.min(78,fromX)),y:84},{x:34,y:80},{x:32,y:59},target];
+  }
+  if(fromX<36 && fromY<70)return [{x:32,y:78},{x:40,y:84},target];
+  if(zone==="lounge" && fromX<77)return [{x:Math.max(55,fromX),y:84},{x:80,y:81},target];
+  if(zone==="desk" && fromX>76 && target.x<76)return [{x:78,y:84},target];
+  return [target];
+}
+function nextSegment(actor){
+  if(!actor.path.length)return false;
+  actor.from.copy(actor.holder.position);
+  actor.to.copy(place(actor.path.shift()));
+  actor.travel=0;
+  updateClip(actor,"walk");
+  return true;
 }
 function moveToZone(actor,zone){
   const area=stages[actor.index]?.[zone];
   if(!area)return false;
   actor.goal=zone;
   actor.wait=0;
-  move(actor,area);
+  actor.gestureTimer=0;
+  actor.path=routeBetween(actor,zone);
+  nextSegment(actor);
   return true;
-}
-function move(actor,target){
-  actor.from.copy(actor.holder.position);
-  actor.to.copy(place(target));
-  actor.travel=0;
-  updateClip(actor,"walk");
 }
 function removeActor(actor){
   actor.hit?.remove();
@@ -262,41 +306,72 @@ function animateActor(actor,delta,time){
   actor.mixer.update(delta);
   if(actor.state==="walk"){
     const distance=actor.from.distanceTo(actor.to);
-    actor.travel=Math.min(1,actor.travel+delta*1.4/Math.max(distance,.1));
-    const f=actor.travel*actor.travel*(3-2*actor.travel);
-    actor.holder.position.lerpVectors(actor.from,actor.to,f);
+    // No extreme acceleration or constant zig-zags. Natural pace with
+    // smooth arrival and a moderate turn toward the travel direction.
+    actor.travel=Math.min(1,actor.travel+delta*actor.walkSpeed/Math.max(distance,.1));
+    const p=actor.travel;
+    const f=p<.12?(p*p/.12):p>.87?1-(1-p)*(1-p)/.13:p;
+    actor.holder.position.lerpVectors(actor.from,actor.to,Math.max(0,Math.min(1,f)));
+    const dx=actor.to.x-actor.from.x;
     actor.body.rotation.y=THREE.MathUtils.lerp(actor.body.rotation.y,
-      actor.to.x>actor.from.x?.20:-.20,.06);
+      dx>.04?.35:dx<-.04?-.35:0,Math.min(1,delta*4.5));
     if(actor.travel>=1){
+      if(nextSegment(actor))return;
       if(actor.closing){removeActor(actor);return;}
       actor.point=actor.goal;
+      actor.arrivedCount++;
       actor.wait=0;
-      // Talking is a real rig animation; falling back to idle if absent.
-      updateClip(actor,actor.point==="meeting"||actor.point==="lounge"?"talk":"idle");
+      actor.gestureTimer=0;
+      actor.workMode="work";
+      updateClip(actor,postureClip(actor));
     }
-  } else if(!actor.closing) {
+  } else if(!actor.closing){
     actor.wait+=delta;
-    const templates=stages[actor.index];
-    if(actor.wait>10+actor.index*2&&!reducedMotion.matches && performance.now()>actor.manualUntil) {
+    actor.gestureTimer+=delta;
+    // At desks, colleagues mainly work: subtle repeated shoulder/forearm movement
+    // plus occasional glances, instead of non-stop walking.
+    if(actor.point==="desk"){
+      const cycle=actor.gestureTimer+actor.motionSeed;
+      const nextMode=cycle%19>15?"look":cycle%19>9?"think":"work";
+      if(nextMode!==actor.workMode){
+        actor.workMode=nextMode;
+        updateClip(actor,postureClip(actor));
+      }
+      actor.handBones.forEach((bone,i)=>{
+        // Animations set bone pose each mixer.update. Apply a small temporary
+        // rotation after it; no accumulated distortion frame to frame.
+        const strength=.045*Math.sin(time*.0038+i*2.1+actor.motionSeed);
+        bone.rotateX(strength);
+      });
+    }
+    const breakAfter=actor.index===0?70:actor.index===1?95:actor.index===2?82:105;
+    if(actor.wait>breakAfter && !reducedMotion.matches && performance.now()>actor.manualUntil){
       actor.wait=0;
-      actor.routeIndex=(actor.routeIndex+1)%templates.routes.length;
-      moveToZone(actor,templates.routes[actor.routeIndex]);
+      actor.routeIndex=(actor.routeIndex+1)%stages[actor.index].routes.length;
+      moveToZone(actor,stages[actor.index].routes[actor.routeIndex]);
+    }
+    // People in meeting occasionally switch between listening and speaking.
+    if(actor.point==="meeting" && actor.gestureTimer>8+actor.index*2){
+      actor.gestureTimer=0;
+      updateClip(actor,actor.state==="talk"?"idle":(actor.actions.talk?"talk":"idle"));
     }
   }
   if(actor.hit){
     const projected=actor.holder.position.clone();
-    projected.y+=.85;
+    projected.y+=.76;
     projected.project(camera);
     actor.hit.style.left=(projected.x*.5+.5)*100+"%";
     actor.hit.style.top=(-projected.y*.5+.5)*100+"%";
   }
 }
+
 function loop(){
   if(info.status!=="ready"||!renderer)return;
   requestAnimationFrame(loop);
   if(document.hidden || !stage.getClientRects().length){clock.getDelta();return;}
   const dt=Math.min(clock.getDelta(),.05);
-  stagePeople.forEach(actor=>animateActor(actor,dt));
+  const time=performance.now();
+  stagePeople.forEach(actor=>animateActor(actor,dt,time));
   renderer.render(world,camera);
   info.frames++;
 }
@@ -309,7 +384,9 @@ info.command=(id,zone)=>{
   return moveToZone(actor,zone);
 };
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
-  id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing
+  id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
+  activity:a.point==="desk"?"Al computer":a.point==="meeting"?"Riunione":a.point==="lounge"?"Pausa":"Ingresso",
+  routeSegments:a.path.length,arrivals:a.arrivedCount
 }));
 function centerForMobile(){
   if(matchMedia("(max-width: 750px)").matches) {
