@@ -24,6 +24,11 @@ try {
   // This project must render actual WebGL geometry, not a static image.
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
   assert.equal(await page.locator(".penthouse-artwork").count(), 1, "Premium scene artwork missing");
+  const background=await page.locator(".penthouse-artwork").getAttribute("src");
+  assert.equal(background,"./assets/penthouse-empty-v2.webp",
+    "Old background with duplicate static people is still in use");
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-background"),"empty-v2");
+
   assert.equal(await page.locator(".agent-hotspot").count(),4);
   // Accept only actual GLB model/animation readiness, not a decorative screenshot.
   await page.waitForFunction(
