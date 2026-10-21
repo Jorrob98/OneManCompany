@@ -273,7 +273,7 @@ function updateClip(actor,next){
     status.textContent=actor.closing?"In uscita":
       next==="walk"?"Si sposta…":
       actor.point==="meeting"?"Parla con colleghi":
-      actor.point==="lounge"?"In pausa":
+      actor.point==="lounge"?"Pausa caffè":
       next==="think"?"Controlla i dati":
       next==="look"?"Legge il monitor":
       actor.point==="desk"?"Al computer · seduto":"Al computer";
@@ -469,11 +469,14 @@ function animateActor(actor,delta,time){
     if(clip)clip.timeScale=THREE.MathUtils.clamp(.90+actor.walkSpeed*.09,.9,1.18);
     // Finish standing up before the character moves away from its chair.
     const standingDelay=actor.seatedWeight>.12;
-    // No extreme acceleration or constant zig-zags. Natural pace with
-    // smooth arrival and a moderate turn toward the travel direction.
-    actor.travel=Math.min(1,actor.travel+(standingDelay?0:delta*actor.walkSpeed/Math.max(distance,.1)));
+    const traffic=hasTrafficConflict(actor,delta);
+    if(traffic)actor.yieldCount+=actor.yieldDelay===0?1:0;
+    actor.yieldDelay=traffic?actor.yieldDelay+delta:0;
+    // Smooth easing at junctions and cautious right-of-way at intersections.
+    const motionDelay=standingDelay||traffic;
+    actor.travel=Math.min(1,actor.travel+(motionDelay?0:delta*actor.walkSpeed/Math.max(distance,.1)));
     const p=actor.travel;
-    const f=p<.12?(p*p/.12):p>.87?1-(1-p)*(1-p)/.13:p;
+    const f=p*p*(3-2*p);
     actor.holder.position.lerpVectors(actor.from,actor.to,Math.max(0,Math.min(1,f)));
     const dx=actor.to.x-actor.from.x;
     actor.body.rotation.y=THREE.MathUtils.lerp(actor.body.rotation.y,
@@ -482,10 +485,12 @@ function animateActor(actor,delta,time){
       if(nextSegment(actor))return;
       if(actor.closing){removeActor(actor);return;}
       actor.point=actor.goal;
+      actor.occupiedNode=null;
       actor.arrivedCount++;
       actor.wait=0;
       actor.gestureTimer=0;
       actor.workMode="work";
+      actor.pauseSeconds=dwellSeconds(actor.role,actor.point,actor.index,actor.routeIndex);
       updateClip(actor,postureClip(actor));
     }
   } else if(!actor.closing){
@@ -502,11 +507,10 @@ function animateActor(actor,delta,time){
       }
 
     }
-    const breakAfter=actor.index===0?70:actor.index===1?95:actor.index===2?82:105;
-    if(actor.wait>breakAfter && !reducedMotion.matches && performance.now()>actor.manualUntil){
-      actor.wait=0;
-      actor.routeIndex=(actor.routeIndex+1)%stages[actor.index].routes.length;
-      moveToZone(actor,stages[actor.index].routes[actor.routeIndex]);
+    if(actor.wait>actor.pauseSeconds && !reducedMotion.matches && performance.now()>actor.manualUntil){
+      actor.routeIndex++;
+      const nextZone=nextRoutine(actor.role,actor.point,actor.index,actor.routeIndex);
+      moveToZone(actor,nextZone);
     }
     // People in meeting occasionally switch between listening and speaking.
     if(actor.point==="meeting" && actor.gestureTimer>8+actor.index*2){
@@ -556,7 +560,11 @@ info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   sittingBlend:Number(a.seatedWeight.toFixed(3)),typing:a.typingActive,
   rigLegs:a.poseBones.thigh.length+a.poseBones.calf.length,
   activity:a.point==="desk"?"Al computer":a.point==="meeting"?"Riunione":a.point==="lounge"?"Pausa":"Ingresso",
-  routeSegments:a.path.length,arrivals:a.arrivedCount
+  routeSegments:a.path.length,arrivals:a.arrivedCount,
+  slot:a.index,role:a.role,pauseSeconds:a.pauseSeconds,
+  routeNodes:a.routeNodes.slice(),occupiedNode:a.occupiedNode,yieldCount:a.yieldCount,
+  location:{x:Number(((a.holder.position.x/DIM_X+.5)*100).toFixed(2)),
+            y:Number(((.5-a.holder.position.y/DIM_Y)*100).toFixed(2))}
 }));
 function centerForMobile(){
   if(matchMedia("(max-width: 750px)").matches) {
