@@ -35,22 +35,24 @@ window.AIOAgents3D = info;
 if (!stage || !surface || !bridge) throw new Error("Office scene is missing");
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+// Scenic coordinates are percentages of the *people-free* 1672x941 render.
+// Keep meeting in the left glass pod, desks at actual consoles, lounge to the right.
 const stages = [
   {
-    entry: {x:56,y:91}, desk: {x:56,y:71}, lounge: {x:41,y:70},
-    meeting: {x:63,y:55}, routes: ["desk","lounge","desk","meeting","desk"]
+    entry:{x:58,y:93},desk:{x:59,y:77},meeting:{x:18,y:55},lounge:{x:89,y:76},
+    routes:["desk","lounge","desk","meeting","desk"]
   },
   {
-    entry: {x:73,y:90}, desk: {x:68,y:73}, lounge: {x:78,y:66},
-    meeting: {x:65,y:53}, routes: ["desk","meeting","desk","lounge","desk"]
+    entry:{x:47,y:92},desk:{x:44,y:62},meeting:{x:23,y:58},lounge:{x:85,y:74},
+    routes:["desk","meeting","desk","lounge","desk"]
   },
   {
-    entry: {x:38,y:91}, desk: {x:45,y:76}, lounge: {x:38,y:66},
-    meeting: {x:57,y:52}, routes: ["desk","meeting","desk","lounge","desk"]
+    entry:{x:72,y:92},desk:{x:70,y:74},meeting:{x:14,y:60},lounge:{x:91,y:72},
+    routes:["desk","meeting","desk","lounge","desk"]
   },
   {
-    entry: {x:86,y:91}, desk: {x:80,y:75}, lounge: {x:83,y:65},
-    meeting: {x:70,y:54}, routes: ["desk","lounge","desk","meeting","desk"]
+    entry:{x:87,y:92},desk:{x:84,y:43},meeting:{x:27,y:53},lounge:{x:88,y:80},
+    routes:["desk","lounge","desk","meeting","desk"]
   }
 ];
 const MAX_AGENTS = 4;
