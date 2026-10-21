@@ -279,39 +279,48 @@ function updateClip(actor,next){
       actor.point==="desk"?"Al computer · seduto":"Al computer";
   }
 }
-// Corridor waypoints steer workers around the central console island. Positions
-// are projected into the fixed office artwork; this is 2.5D, not real collisions.
-function routeBetween(actor,zone){
-  const pos=actor.holder.position;
-  const fromX=(pos.x/DIM_X+.5)*100, fromY=(.5-pos.y/DIM_Y)*100;
-  const target=stages[actor.index][zone];
-  if(zone==="entry")return [{x:Math.max(38,Math.min(85,fromX)),y:85},target];
-  if(zone==="meeting"){
-    if(fromX<35)return [target];
-    return [{x:Math.max(37,Math.min(78,fromX)),y:84},{x:34,y:80},{x:32,y:59},target];
-  }
-  if(fromX<36 && fromY<70)return [{x:32,y:78},{x:40,y:84},target];
-  if(zone==="lounge" && fromX<77)return [{x:Math.max(55,fromX),y:84},{x:80,y:81},target];
-  if(zone==="desk" && fromX>76 && target.x<76)return [{x:78,y:84},target];
-  return [target];
+// Graph-based aisle navigation avoids pictured workstations and keeps each
+// employee at a fixed seat. Endpoints are the photographed furniture, not
+// full physical mesh colliders.
+function scenePoint(actor){
+ const p=actor.holder.position;
+ return {x:(p.x/DIM_X+.5)*100,y:(.5-p.y/DIM_Y)*100};
 }
 function nextSegment(actor){
-  if(!actor.path.length)return false;
-  actor.from.copy(actor.holder.position);
-  actor.to.copy(place(actor.path.shift()));
-  actor.travel=0;
-  updateClip(actor,"walk");
-  return true;
+ if(!actor.path.length)return false;
+ const target=actor.path.shift();
+ actor.occupiedNode=target.node;
+ actor.from.copy(actor.holder.position);
+ actor.to.copy(place(target));
+ actor.travel=0;actor.yieldDelay=0;
+ updateClip(actor,"walk");
+ return true;
 }
 function moveToZone(actor,zone){
-  const area=stages[actor.index]?.[zone];
-  if(!area)return false;
-  actor.goal=zone;
-  actor.wait=0;
-  actor.gestureTimer=0;
-  actor.path=routeBetween(actor,zone);
-  nextSegment(actor);
-  return true;
+ if(!stages[actor.index]?.[zone])return false;
+ const occupied=new Set([...stagePeople.values()].filter(x=>
+   x.id!==actor.id && x.state==="walk" && x.occupiedNode).map(x=>x.occupiedNode));
+ const steps=planOfficeRoute(scenePoint(actor),actor.index,zone,occupied);
+ if(!steps.length)return false;
+ actor.goal=zone;
+ actor.wait=0;actor.gestureTimer=0;
+ actor.path=steps;
+ actor.routeNodes=steps.map(step=>step.node);
+ actor.yieldDelay=0;
+ return nextSegment(actor);
+}
+function hasTrafficConflict(actor,delta){
+ const total=actor.to.clone().sub(actor.from);
+ const progress=actor.holder.position.clone().addScaledVector(total,
+  Math.min(.3,delta*actor.walkSpeed));
+ for(const other of stagePeople.values()){
+   if(other===actor || other.closing || other.state!=="walk")continue;
+   // Smaller index gets right of way. This prevents mutual stand-offs.
+   if(other.index>=actor.index)continue;
+   const distance=progress.distanceTo(other.holder.position);
+   if(distance<.53)return true;
+ }
+ return false;
 }
 function removeActor(actor){
   actor.hit?.remove();
@@ -358,8 +367,14 @@ function sync() {
       moveToZone(actor,"desk");
     }
   }
-  candidates.forEach((a,index)=>{
+  // Reserved desks must not jump around when another worker goes on leave.
+  // Existing occupants keep their assigned workstation until they leave.
+  const used=new Set([...stagePeople.values()].map(actor=>actor.index));
+  candidates.forEach(a=>{
     if(a.status!=="available"||stagePeople.has(a.id))return;
+    const index=[0,1,2,3].find(n=>!used.has(n));
+    if(index===undefined)return;
+    used.add(index);
     const style=safeStyle(a.modelStyle,index);
     if(assets.models.has(style))build(a,index);
     else if(!assets.modelPromises.has(style)){
