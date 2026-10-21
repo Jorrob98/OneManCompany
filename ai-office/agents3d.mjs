@@ -43,19 +43,19 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 // Keep meeting in the left glass pod, desks at actual consoles, lounge to the right.
 const stages = [
   {
-    entry:{x:58,y:93},desk:{x:59,y:77},meeting:{x:18,y:55},lounge:{x:89,y:76},
+    entry:{x:58,y:93},desk:{x:36,y:58},meeting:{x:18,y:55},lounge:{x:89,y:76},
     routes:["desk","lounge","desk","meeting","desk"]
   },
   {
-    entry:{x:47,y:92},desk:{x:44,y:62},meeting:{x:23,y:58},lounge:{x:85,y:74},
+    entry:{x:47,y:92},desk:{x:52,y:59},meeting:{x:23,y:58},lounge:{x:85,y:74},
     routes:["desk","meeting","desk","lounge","desk"]
   },
   {
-    entry:{x:72,y:92},desk:{x:70,y:74},meeting:{x:14,y:60},lounge:{x:91,y:72},
+    entry:{x:72,y:92},desk:{x:68,y:51},meeting:{x:14,y:60},lounge:{x:91,y:72},
     routes:["desk","meeting","desk","lounge","desk"]
   },
   {
-    entry:{x:87,y:92},desk:{x:84,y:43},meeting:{x:27,y:53},lounge:{x:88,y:80},
+    entry:{x:87,y:92},desk:{x:79,y:50},meeting:{x:27,y:53},lounge:{x:88,y:80},
     routes:["desk","lounge","desk","meeting","desk"]
   }
 ];
@@ -83,6 +83,7 @@ try {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.25;
   renderer.setClearColor(0x000000,0);
+  renderer.localClippingEnabled=true;
   renderer.domElement.className="office-agent-canvas";
   renderer.domElement.setAttribute("aria-hidden","true");
   surface.appendChild(renderer.domElement);
@@ -172,8 +173,22 @@ function build(a,index) {
   holder.position.copy(position);
   // GLB skin rest-pose bounding boxes under-report actual animated extent:
   // calibrate against the photographed 2.5D office (not a full-world 3D camera).
-  const factor=0.38*(index%2===0?1.45:1.50)/safeHeight;
+  const factor=0.36*(index%2===0?1.45:1.50)*[1,.96,.85,.82][index]/safeHeight;
   body.scale.setScalar(factor);
+  // In a 2.5D office the furniture is photographed, not true 3D geometry.
+  // Clip just the lower part of a seated worker at the desk plane so chairs
+  // and consoles visually occlude the legs; restore full body before walking.
+  const seatOcclusion=new THREE.Plane(new THREE.Vector3(0,1,0),100);
+  body.traverse(node=>{
+    if(!node.isMesh || !node.material)return;
+    const decorate=m=>{
+      const out=m.clone();
+      out.clippingPlanes=[seatOcclusion];
+      out.clipShadows=true;
+      return out;
+    };
+    node.material=Array.isArray(node.material)?node.material.map(decorate):decorate(node.material);
+  });
   const shade=shadow();holder.add(shade);
   world.add(holder);
   const mixer=new THREE.AnimationMixer(body);
@@ -191,7 +206,7 @@ function build(a,index) {
     motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
     handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],spine:[],head:[]},
-    restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,
+    restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,seatOcclusion,
     typingActive:false,arrivedCount:0,activity:"Ingresso"};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
   body.traverse(node=>{
@@ -279,7 +294,11 @@ function removeActor(actor){
   actor.mixer.stopAllAction();
   world.remove(actor.holder);
   actor.body.traverse(o=>{
-    // GLTF geometries/textures are shared and cached for both instances.
+    // GLTF geometries/textures are shared, customized materials are private.
+    if(o.isMesh){
+      const mats=Array.isArray(o.material)?o.material:[o.material];
+      mats.forEach(m=>m?.dispose?.());
+    }
     if(o.isSkinnedMesh)o.skeleton?.dispose?.();
   });
   stagePeople.delete(actor.id);
@@ -327,7 +346,8 @@ function seatedPose(actor,delta,time){
   actor.seatedWeight=THREE.MathUtils.damp(actor.seatedWeight,target,5.2,delta);
   const weight=actor.seatedWeight;
   // Actual hips lower as legs bend; body is still parented to its walking anchor.
-  actor.body.position.y=actor.baseBodyY-.12*weight;
+  actor.body.position.y=actor.baseBodyY-.27*weight;
+  actor.seatOcclusion.constant=10*(1-weight)-(.10+(.04*actor.index))*weight;
   if(weight<.005)return;
   const signing=(key,angle,axis=xAxis)=>{
     const nodes=actor.poseBones[key];
@@ -420,7 +440,7 @@ function animateActor(actor,delta,time){
   }
   if(actor.hit){
     const projected=actor.holder.position.clone();
-    projected.y+=.76;
+    projected.y+=.76-.19*actor.seatedWeight;
     projected.project(camera);
     actor.hit.style.left=(projected.x*.5+.5)*100+"%";
     actor.hit.style.top=(-projected.y*.5+.5)*100+"%";
