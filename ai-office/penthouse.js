@@ -10,7 +10,7 @@
     [59, 77], [44, 62], [70, 74], [84, 43],
     [18, 55], [89, 76], [76, 80], [24, 54]
   ];
-  let zoomed = false;
+  let cameraMode = 0;
   function refresh() {
     const selected = bridge.getSelected();
     const present = bridge.getAgents().filter(a => a.status !== "retired");
@@ -48,8 +48,10 @@
   window.addEventListener("studio:changed", refresh);
   document.getElementById("roomMood")?.addEventListener("click",()=>queueMicrotask(refresh));
   document.getElementById("roomZoom")?.addEventListener("click",()=>{
-    zoomed = !zoomed;
-    stage.classList.toggle("close-view",zoomed);
+    cameraMode=(cameraMode+1)%3;
+    stage.classList.toggle("close-view",cameraMode===1);
+    stage.classList.toggle("focus-view",cameraMode===2);
+    stage.dataset.cameraMode=["overview","close","focus"][cameraMode];
   });
   const img=stage.querySelector("img");
   img?.addEventListener("load",()=>stage.classList.add("scene-loaded"));
