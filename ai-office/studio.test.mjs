@@ -15,7 +15,7 @@ test("all four navigable sections exist",()=>{
 test("responsive premium office and mobile layouts are included",()=>{
   assert.match(html,/id="roomCanvas"/);
   assert.match(css,/@media\(max-width:750px\)/);
-  assert.match(html,/assets\/penthouse-hero\.webp/);
+  assert.match(html,/assets\/penthouse-empty-v2\.webp/);
   assert.match(html,/id="penthouseMarkers"/);
 });
 test("actions manage real local prototype state",()=>{
