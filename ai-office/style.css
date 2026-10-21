@@ -12,7 +12,7 @@
 /* AI OFFICE Penthouse • approved art direction, inside the existing real app. */
 .office-grid{display:flex;flex-direction:column;gap:0}
 .room-card{width:100%;border:1px solid #3c4152;box-shadow:0 24px 70px #0004}
-.scene-wrap{position:relative;height:auto;min-height:0;aspect-ratio:1280 / 530;overflow:hidden;background:#131b29}
+.scene-wrap{position:relative;height:auto;min-height:0;aspect-ratio:1672 / 941;overflow:hidden;background:#131b29}
 .scene-wrap #roomCanvas{display:none!important}
 .scene-wrap:after{z-index:2;pointer-events:none;background:linear-gradient(0deg,rgba(8,14,25,.24),transparent 18%,transparent 82%,rgba(11,19,32,.15))}
 .penthouse-stage{position:absolute;inset:0;z-index:1;overflow:hidden;isolation:isolate;background:linear-gradient(120deg,#171d2e,#2d3142)}
@@ -51,11 +51,11 @@
 .penthouse-stage.scene-error{background:#20263b}
 .penthouse-stage.scene-error .penthouse-surface{display:none}
 .penthouse-stage.scene-error:after{content:'Scena grafica temporaneamente non disponibile';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:15px;color:#ffe4bc;font-size:14px}
-@media(max-width:990px){.scene-wrap{aspect-ratio:1280 / 555}.side-stack{grid-template-columns:1fr 1fr}}
+@media(max-width:990px){.scene-wrap{aspect-ratio:1672 / 941}.side-stack{grid-template-columns:1fr 1fr}}
 @media(max-width:750px){
  .scene-wrap{height:375px;aspect-ratio:auto;min-height:0}
  .penthouse-stage{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#998575 #1a2634;-webkit-overflow-scrolling:touch}
- .penthouse-surface{height:100%;width:920px;min-width:920px}
+ .penthouse-surface{height:100%;width:667px;min-width:667px}
  .penthouse-artwork{object-fit:fill}
  .penthouse-stage.close-view .penthouse-surface{transform:none}
  .penthouse-counter{position:sticky;left:12px;right:auto;top:13px;width:max-content;margin-top:-355px;margin-left:10px}
@@ -120,3 +120,12 @@
 .agent-director button{background:#223d48;border-color:#446475}
 .agent-director button:hover{background:#315966}
 @media(max-width:750px){.office-agent-select .office-agent-mode{font-size:9px}}
+
+/* Penthouse background V2: preserve natural proportions of 1672x941 illustration. */
+.penthouse-artwork{object-fit:cover;object-position:center center}
+.penthouse-stage[data-background="empty-v2"] .penthouse-wash{
+ background:linear-gradient(180deg,rgba(11,16,31,.08) 0%,transparent 44%,rgba(15,17,26,.07) 100%)
+}
+@media(max-width:750px){
+ .penthouse-stage[data-background="empty-v2"] .penthouse-surface{width:667px;min-width:667px}
+}
