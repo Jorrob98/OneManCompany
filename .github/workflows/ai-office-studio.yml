@@ -19,9 +19,12 @@ jobs:
         with:
           node-version: "22"
       - name: JavaScript syntax check
-        run: node --check ai-office/app.js
+        run: |
+          node --check ai-office/app.js
+          node --check ai-office/agents3d.mjs
+          node --check ai-office/movement.mjs
       - name: UI smoke tests
-        run: node --test ai-office/studio.test.mjs
+        run: node --test ai-office/studio.test.mjs ai-office/movement.test.mjs
       - name: Install browser test runner
         run: npm install --no-save playwright-core@1.56.1
       - name: UI interactions on desktop and mobile
