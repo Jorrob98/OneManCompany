@@ -44,3 +44,7 @@ node ai-office/browser.test.mjs
 ```
 
 GitHub Actions **AI Office Studio UI** avvia Chrome reale in test, controlla GLB, quattro modelli, comandi di meeting e ritorno alla scrivania, navigazione, assunzioni, incarichi, localStorage e responsive. I file e il vecchio motore `office3d.js` restano nella cartella per tracciabilità, ma **non sono importati nella pagina pubblica**.
+
+## Ambientazione senza persone (21 ottobre 2026)
+
+Il sito usa `assets/penthouse-empty-v2.webp`, scena nuova senza personaggi incorporati e con le aree di lavoro vuote. L'originale `penthouse-hero.webp` è conservato come backup. Waypoint e hotspot sono allineati ai mobili del nuovo render. Non è una simulazione 3D completa dell'arredamento: gli avatar vengono sovrapposti all'immagine 2.5D.
