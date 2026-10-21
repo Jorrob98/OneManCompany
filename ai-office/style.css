@@ -303,3 +303,6 @@
 @media(prefers-reduced-motion:reduce){
  .aio-environment *, .aio-monitor-ui *, .aio-zone-halo{animation:none!important;transition:none!important}
 }
+
+/* Avoid duplicate 2D "+" markers in a room where rigged 3D employees loaded. */
+.penthouse-stage.has-live-3d .penthouse-markers{opacity:0;pointer-events:none}
