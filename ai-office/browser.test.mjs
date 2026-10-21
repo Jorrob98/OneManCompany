@@ -61,8 +61,14 @@ try {
   // depth-corrected 3D workers, four scene lighting modes and room navigation.
   await page.waitForFunction(()=>window.AIOEnvironment?.getStatus?.().monitors===4,null,{timeout:15000});
   assert.equal(await page.locator(".aio-furniture-cutout").count(),2);
+  assert.equal(await page.locator("#penthouseMarkers").evaluate(el=>getComputedStyle(el).opacity),
+    "0","Duplicate 2D employee + markers still visible");
+
   assert.equal(await page.locator(".aio-monitor-ui").count(),4);
   assert.equal(await page.locator(".aio-zone-bar button").count(),3);
+  assert.equal(await page.locator('.office-agent-select:not(.selected) .office-agent-mode').first().evaluate(
+    el=>getComputedStyle(el).display),"none","Mobile employee labels crowd the office");
+
   const firstWorker=await page.evaluate(()=>window.AIOAgents3D.snapshot()[0]);
   assert.ok(firstWorker.depthScale>=.93&&firstWorker.depthScale<=1.06,"Perspective scaling did not initialize");
   assert.ok(firstWorker.shadowOpacity>.25,"Contact shadow is not visible");
