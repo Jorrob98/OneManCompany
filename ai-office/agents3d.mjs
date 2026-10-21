@@ -15,8 +15,18 @@ const bridge = window.AIOStudio;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const assetBase = "https://models.codelove.in";
 const modelURLs = {
-  female: assetBase + "/models/business-female-01.glb",
-  male: assetBase + "/models/business-male-01.glb"
+  f1: assetBase + "/models/business-female-01.glb",
+  f2: assetBase + "/models/business-female-02.glb",
+  f3: assetBase + "/models/business-female-03.glb",
+  f4: assetBase + "/models/business-female-04.glb",
+  m1: assetBase + "/models/business-male-01.glb",
+  m2: assetBase + "/models/business-male-02.glb",
+  m3: assetBase + "/models/business-male-03.glb",
+  m4: assetBase + "/models/business-male-04.glb"
+};
+const appearanceColors={
+  coral:0xe99f85,mint:0x78d9b2,lavender:0xbba9ee,
+  blue:0x83b6f2,gold:0xf5c77f
 };
 const clipURLs = {
   female: {
@@ -119,24 +129,37 @@ function shadow() {
   plane.position.set(0,.12,-.22);
   return plane;
 }
-const assets={};
-async function preload() {
-  const bundles=await Promise.all(["female","male"].map(async sex=>{
-    const [gltf,anim]=await Promise.all([
-      loader.loadAsync(modelURLs[sex]),
-      Promise.all(Object.entries(clipURLs[sex]).map(async ([name,url])=>{
-        try { const g=await loader.loadAsync(url);return [name,g.animations[0]||null];}
-        catch(e){console.warn("Animation unavailable:",name,sex);return [name,null];}
-      }))
-    ]);
-    return [sex,{template:gltf.scene,animations:Object.fromEntries(anim)}];
-  }));
-  for(const [sex,bundle] of bundles) {
-    if(!bundle.animations.idle || !bundle.animations.walk)
-      throw new Error("Missing actual GLB idle/walk animation clips: "+sex);
-    assets[sex]=bundle;
+const assets={models:new Map(),modelPromises:new Map(),clips:{}};
+const safeStyle=(value,index=0)=>modelURLs[value]?value:["f1","m1","f2","m2"][index%4];
+function ensureModel(style){
+  if(assets.models.has(style))return Promise.resolve(assets.models.get(style));
+  if(!assets.modelPromises.has(style)){
+    assets.modelPromises.set(style,loader.loadAsync(modelURLs[style]).then(g=>{
+      assets.models.set(style,g.scene);
+      assets.modelPromises.delete(style);
+      return g.scene;
+    }).catch(err=>{assets.modelPromises.delete(style);throw err;}));
   }
-  info.activeClips=["idle","walk","talk","look","think"].filter(name=>assets.female.animations[name] && assets.male.animations[name]);
+  return assets.modelPromises.get(style);
+}
+async function preload() {
+  const sexes=await Promise.all(["female","male"].map(async sex=>{
+    const entries=await Promise.all(Object.entries(clipURLs[sex]).map(async ([name,url])=>{
+      try {const glb=await loader.loadAsync(url);return [name,glb.animations[0]||null];}
+      catch(err){console.warn("Optional animation unavailable:",name,sex);return [name,null];}
+    }));
+    const animations=Object.fromEntries(entries);
+    if(!animations.idle||!animations.walk)throw Error("Required GLB rig clips missing for "+sex);
+    return [sex,animations];
+  }));
+  for(const [sex,clips] of sexes)assets.clips[sex]=clips;
+  // Only preload models that are actually on stage; all remaining variants
+  // are loaded lazily when the user chooses them, avoiding unnecessary MB.
+  const needed=new Set(bridge.getAgents().filter(a=>a.status==="available").slice(0,MAX_AGENTS)
+    .map((a,i)=>safeStyle(a.modelStyle,i)));
+  await Promise.all([...needed].map(ensureModel));
+  info.activeClips=["idle","walk","talk","look","think"].filter(name=>assets.clips.female[name]&&assets.clips.male[name]);
+  info.modelVariants=Object.keys(modelURLs);
 }
 function select(id) {
   bridge.select(id);
@@ -146,6 +169,7 @@ function nameButton(a, actor){
   const button=document.createElement("button");
   button.type="button";button.className="office-agent-select";
   button.dataset.agentId=a.id;
+  button.dataset.color=a.color;
   button.setAttribute("aria-label","Seleziona agente 3D "+a.name);
   button.title=a.name+" · 3D";
   const text=document.createElement("span");
@@ -159,21 +183,23 @@ function nameButton(a, actor){
   actor.hit=button;
 }
 function build(a,index) {
-  const sex=index%2===0?"female":"male";
-  const source=assets[sex];if(!source)return;
+  const style=safeStyle(a.modelStyle,index);
+  const sex=style.startsWith("f")?"female":"male";
+  const template=assets.models.get(style);
+  if(!template)return;
   const holder=new THREE.Group();
-  const body=cloneRig(source.template);
+  const body=cloneRig(template);
   holder.add(body);
   const bounds=new THREE.Box3().setFromObject(body);
   const size=bounds.getSize(new THREE.Vector3());
   const safeHeight=Math.max(size.y,.15);
   body.position.y-=bounds.min.y;
-  const template=stages[index];
-  const position=place(template.entry);
+  const workstation=stages[index];
+  const position=place(workstation.entry);
   holder.position.copy(position);
   // GLB skin rest-pose bounding boxes under-report actual animated extent:
   // calibrate against the photographed 2.5D office (not a full-world 3D camera).
-  const factor=0.36*(index%2===0?1.45:1.50)*[1,.96,.85,.82][index]/safeHeight;
+  const factor=0.36*(sex==="female"?1.45:1.50)*[1,.96,.85,.82][index]/safeHeight;
   body.scale.setScalar(factor);
   // In a 2.5D office the furniture is photographed, not true 3D geometry.
   // Clip just the lower part of a seated worker at the desk plane so chairs
@@ -193,19 +219,19 @@ function build(a,index) {
   world.add(holder);
   const mixer=new THREE.AnimationMixer(body);
   const actions={};
-  Object.entries(source.animations).forEach(([name,clip])=>{
+  Object.entries(assets.clips[sex]).forEach(([name,clip])=>{
     if(clip) {
       actions[name]=mixer.clipAction(clip);
       actions[name].setLoop(THREE.LoopRepeat,Infinity);
     }
   });
   // Each worker has their own rhythm and a reserved desk; their motions are visual only.
-  const actor={id:a.id,sex,index,holder,body,mixer,actions,state:"",point:"entry",
-    goal:"desk",from:place(template.entry),to:place(template.desk),travel:0,wait:0,
+  const actor={id:a.id,sex,index,style,color:a.color,holder,body,mixer,actions,state:"",point:"entry",
+    goal:"desk",from:place(workstation.entry),to:place(workstation.desk),travel:0,wait:0,
     next:0,routeIndex:0,closing:false,manualUntil:0,hit:null,
     motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
-    handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],spine:[],head:[]},
+    handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
     restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,seatOcclusion,
     typingActive:false,arrivedCount:0,activity:"Ingresso"};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
@@ -218,11 +244,21 @@ function build(a,index) {
     else if(/calf|shin|lowerleg|lower_leg/.test(name))actor.poseBones.calf.push(node);
     else if(/upperarm|upper_arm/.test(name))actor.poseBones.arm.push(node);
     else if(/spine/.test(name))actor.poseBones.spine.push(node);
+    else if(/(finger|thumb|index|pinky|middle|ring)/.test(name))actor.poseBones.finger.push(node);
     else if(/head/.test(name))actor.poseBones.head.push(node);
   });
   // Absent rig groups never crash the page: UI still shows the agent at work.
   info.rigBones=info.rigBones||{};
   info.rigBones[a.id]=Object.fromEntries(Object.entries(actor.poseBones).map(([kind,nodes])=>[kind,nodes.length]));
+  // Distinct accessible identity and subtle colored floor highlight; the eight
+  // original GLBs already contain genuinely different faces, clothes and hair.
+  const accent=new THREE.Mesh(
+    new THREE.TorusGeometry(.22,.017,8,40),
+    new THREE.MeshBasicMaterial({color:appearanceColors[a.color]||appearanceColors.blue,transparent:true,opacity:.80,depthWrite:false})
+  );
+  accent.rotation.x=Math.PI/2;
+  accent.position.y=.05;
+  holder.add(accent);actor.accent=accent;
   nameButton(a,actor);
   stagePeople.set(a.id,actor);
   moveToZone(actor,"desk");
@@ -293,6 +329,8 @@ function removeActor(actor){
   actor.hit?.remove();
   actor.mixer.stopAllAction();
   world.remove(actor.holder);
+  actor.accent.geometry.dispose();
+  actor.accent.material.dispose();
   actor.body.traverse(o=>{
     // GLTF geometries/textures are shared, customized materials are private.
     if(o.isMesh){
@@ -311,6 +349,15 @@ function sync() {
   const wanted=new Set(candidates.map(a=>a.id));
   for(const [id,actor] of stagePeople) {
     const a=people.find(p=>p.id===id);
+    if(a&&a.status==="available"&&safeStyle(a.modelStyle,actor.index)!==actor.style){
+      removeActor(actor);
+      continue;
+    }
+    if(a&&a.color!==actor.color){
+      actor.color=a.color;
+      actor.accent.material.color.setHex(appearanceColors[a.color]||appearanceColors.blue);
+      actor.hit?.setAttribute("data-color",a.color);
+    }
     if(!a||a.status!=="available"||!wanted.has(id)){
       if(!actor.closing) {
         actor.closing=true;
@@ -324,7 +371,15 @@ function sync() {
     }
   }
   candidates.forEach((a,index)=>{
-    if(a.status==="available"&&!stagePeople.has(a.id))build(a,index);
+    if(a.status!=="available"||stagePeople.has(a.id))return;
+    const style=safeStyle(a.modelStyle,index);
+    if(assets.models.has(style))build(a,index);
+    else if(!assets.modelPromises.has(style)){
+      ensureModel(style).then(()=>{if(info.status==="ready")sync();}).catch(e=>{
+        info.appearanceError="Unable to load character "+style;
+        console.warn("Character variant unavailable:",style,e);
+      });
+    }
   });
   document.querySelectorAll(".agent-hotspot").forEach(el=>{
     el.classList.toggle("has-animated-agent",stagePeople.has(el.dataset.agentId));
@@ -376,9 +431,22 @@ function seatedPose(actor,delta,time){
     actor.restoredRotations.set(bone,bone.quaternion.clone());
     bone.quaternion.multiply(tilt);
   }
-  // Monitor-reading: subtle head turns, without constantly waving.
-  if(actor.workMode==="look" && !reducedMotion.matches){
-    signing("head",.055*Math.sin(time*.0009+actor.motionSeed),yAxis);
+  // Finger bones oscillate in alternate pairs during desk work, not whole-arm flapping.
+  if(isTyping){
+    const fingers=actor.poseBones.finger;
+    const max=Math.min(fingers.length,20);
+    for(let i=0;i<max;i++){
+      const bone=fingers[i];
+      const pulse=.11*Math.max(0,Math.sin(time*.013+i*1.8+actor.motionSeed));
+      tilt.setFromAxisAngle(xAxis,pulse*weight);
+      actor.restoredRotations.set(bone,bone.quaternion.clone());
+      bone.quaternion.multiply(tilt);
+    }
+  }
+  // Gentle head movement while reading and talking, slightly different for
+  // each worker; never continuously spin heads or accumulate bone rotations.
+  if(!reducedMotion.matches && (actor.workMode==="look"||actor.point==="meeting")){
+    signing("head",.042*Math.sin(time*.0012+actor.motionSeed),yAxis);
   }
 }
 function animateActor(actor,delta,time){
@@ -387,6 +455,8 @@ function animateActor(actor,delta,time){
   actor.mixer.update(delta);
   if(actor.state==="walk"){
     const distance=actor.from.distanceTo(actor.to);
+    const clip=actor.actions.walk;
+    if(clip)clip.timeScale=THREE.MathUtils.clamp(.90+actor.walkSpeed*.09,.9,1.18);
     // Finish standing up before the character moves away from its chair.
     const standingDelay=actor.seatedWeight>.12;
     // No extreme acceleration or constant zig-zags. Natural pace with
@@ -470,6 +540,7 @@ info.command=(id,zone)=>{
 };
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
+  modelStyle:a.style,color:a.color,fingers:a.poseBones.finger.length,
   posture:a.seatedWeight>.75?"sitting":a.seatedWeight>.08?"transition":"standing",
   sittingBlend:Number(a.seatedWeight.toFixed(3)),typing:a.typingActive,
   rigLegs:a.poseBones.thigh.length+a.poseBones.calf.length,
