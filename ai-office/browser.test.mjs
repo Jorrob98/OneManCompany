@@ -71,6 +71,18 @@ try {
   await page.waitForTimeout(2200);
   assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot()
     .find(a=>a.id==="a1")?.goal),"desk","Employee wandered away immediately instead of working");
+  const seated=await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .find(a=>a.id==="a1"));
+  assert.equal(seated.posture,"sitting","Worker did not transition into a chair posture");
+  assert.ok(seated.sittingBlend>.75,"Seated pose did not finish blending");
+  assert.ok(seated.rigLegs>=2,"Leg bones were not detected on the real rigged model");
+  assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/Seduto/);
+  // Clicking another room raises the employee from the seated pose before walking.
+  await page.locator('[data-action="agent-lounge"][data-id="a1"]').click();
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sittingBlend<.12,
+    null,{timeout:8000});
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.goal),"lounge");
+
 
 
 
