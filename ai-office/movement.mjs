@@ -110,7 +110,9 @@ export function planOfficeRoute(point,index,zone,occupied=new Set()){
  if(!ids.length)return [];
  const output=ids.slice(distance(point,nodes[closest])<2.2?1:0)
    .map(id=>({x:nodes[id].x,y:nodes[id].y,node:id}));
- if(!output.length&&distance(point,nodes[goal])>.45)
+ // Even when an agent is already at the exit, return one terminal station
+ // so its arrival/leave callback runs and it cannot remain stuck in closing.
+ if(!output.length)
   output.push({...nodes[goal],node:goal});
  return output;
 }
