@@ -1,5 +1,5 @@
 /**
- * AI OFFICE — Living Office 4: seated desk routines and procedurally posed rigged employees.
+ * AI OFFICE — Living Office 6: illustrated-office aisle navigation, collision yielding, varied worker routines.
  * Real GLB rigged humans + separate Biped animation clips; three.js/WebGL.
  * MIT model/clip licensing: https://models.codelove.in/licensing
  * Motion is only a simulation of office presence, NEVER evidence of task execution.
@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { clone as cloneRig } from "three/addons/utils/SkeletonUtils.js";
+import {DESKS, ENTRIES, MEETINGS, LOUNGES, planOfficeRoute, nextRoutine, dwellSeconds} from "./movement.mjs";
 
 const stage = document.getElementById("penthouseStage");
 const surface = document.getElementById("penthouseSurface");
@@ -51,24 +52,10 @@ if (!stage || !surface || !bridge) throw new Error("Office scene is missing");
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 // Scenic coordinates are percentages of the *people-free* 1672x941 render.
 // Keep meeting in the left glass pod, desks at actual consoles, lounge to the right.
-const stages = [
-  {
-    entry:{x:58,y:93},desk:{x:36,y:58},meeting:{x:18,y:55},lounge:{x:89,y:76},
-    routes:["desk","lounge","desk","meeting","desk"]
-  },
-  {
-    entry:{x:47,y:92},desk:{x:52,y:59},meeting:{x:23,y:58},lounge:{x:85,y:74},
-    routes:["desk","meeting","desk","lounge","desk"]
-  },
-  {
-    entry:{x:72,y:92},desk:{x:68,y:51},meeting:{x:14,y:60},lounge:{x:91,y:72},
-    routes:["desk","meeting","desk","lounge","desk"]
-  },
-  {
-    entry:{x:87,y:92},desk:{x:79,y:50},meeting:{x:27,y:53},lounge:{x:88,y:80},
-    routes:["desk","lounge","desk","meeting","desk"]
-  }
-];
+const stages = ENTRIES.map((entry,index)=>({
+  entry,desk:DESKS[index],meeting:MEETINGS[index],lounge:LOUNGES[index]
+}));
+// Navigable stations are visual anchors in the image; no physical scene collider.
 const MAX_AGENTS = 4;
 const DIM_X=16,DIM_Y=9;
 const place = (p)=> new THREE.Vector3((p.x/100-.5)*DIM_X,(.5-p.y/100)*DIM_Y,0);
@@ -226,9 +213,10 @@ function build(a,index) {
     }
   });
   // Each worker has their own rhythm and a reserved desk; their motions are visual only.
-  const actor={id:a.id,sex,index,style,color:a.color,holder,body,mixer,actions,state:"",point:"entry",
+  const actor={id:a.id,sex,index,style,color:a.color,role:a.role||"Analista",holder,body,mixer,actions,state:"",point:"entry",
     goal:"desk",from:place(workstation.entry),to:place(workstation.desk),travel:0,wait:0,
     next:0,routeIndex:0,closing:false,manualUntil:0,hit:null,
+    pauseSeconds:0,routeNodes:[],yieldCount:0,yieldDelay:0,occupiedNode:null,
     motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
     handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
