@@ -141,6 +141,8 @@ try {
   assert.deepEqual(await page.evaluate(()=>window.AIOAgents3D.snapshot().filter(a=>a.id!=="a4").map(a=>a.slot)),[0,1,2]);
   await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
   await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a4")?.goal==="desk",null,{timeout:8000});
+  await page.evaluate(()=>window.AIOStudio.select("a1"));
+
 
 
 
