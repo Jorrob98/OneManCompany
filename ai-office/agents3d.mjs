@@ -346,7 +346,10 @@ function seatedPose(actor,delta,time){
   actor.seatedWeight=THREE.MathUtils.damp(actor.seatedWeight,target,5.2,delta);
   const weight=actor.seatedWeight;
   // Actual hips lower as legs bend; body is still parented to its walking anchor.
-  actor.body.position.y=actor.baseBodyY-.27*weight;
+  actor.body.position.y=actor.baseBodyY-.50*weight;
+  // Seated shoulders/head must actually drop to monitor height in this
+  // orthographic 2.5D composition, not hover above the workstation.
+  actor.body.scale.y=actor.body.scale.x*(1-.14*weight);
   actor.seatOcclusion.constant=10*(1-weight)-(.10+(.04*actor.index))*weight;
   if(weight<.005)return;
   const signing=(key,angle,axis=xAxis)=>{
@@ -440,7 +443,7 @@ function animateActor(actor,delta,time){
   }
   if(actor.hit){
     const projected=actor.holder.position.clone();
-    projected.y+=.76-.19*actor.seatedWeight;
+    projected.y+=.76-.34*actor.seatedWeight;
     projected.project(camera);
     actor.hit.style.left=(projected.x*.5+.5)*100+"%";
     actor.hit.style.top=(-projected.y*.5+.5)*100+"%";
