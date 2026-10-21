@@ -466,7 +466,7 @@ canvas.addEventListener("click",event=>{
  if(best&&dist<53**2){state.selected=best.id;renderAll();toast(state.agents.find(a=>a.id===best.id)?.name+" selezionato");}
 });
 $("roomZoom").addEventListener("click",()=>{largeView=!largeView;resizeCanvas();toast(largeView?"Vista ravvicinata":"Vista completa");});
-$("roomMood").addEventListener("click",()=>{state.mood=state.mood==="day"?"evening":"day";save();toast(state.mood==="day"?"Luce diurna":"Luce serale");});
+$("roomMood").addEventListener("click",()=>{const modes=["evening","day","night","auto"];state.mood=modes[(modes.indexOf(state.mood)+1)%modes.length];save();window.dispatchEvent(new Event("studio:atmosphere"));toast(({day:"Luce diurna",evening:"Tramonto",night:"Luce notturna",auto:"Ambiente automatico"})[state.mood]);});
 window.addEventListener("resize",resizeCanvas);
 if("ResizeObserver" in window)new ResizeObserver(resizeCanvas).observe(canvas);
 window.AIOStudio={getAgents:()=>state.agents,getSelected:()=>state.selected,getMood:()=>state.mood,select:id=>{if(state.agents.some(a=>a.id===id&&a.status!=="retired")){state.selected=id;renderAll();}}};
