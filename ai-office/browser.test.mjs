@@ -176,6 +176,17 @@ try {
   assert.ok(await page.locator("#teamMiniList").innerText().then(s=>s.includes("Sofia")));
   await page.reload({waitUntil:"domcontentloaded"});
   assert.equal(await page.locator("#statEmployees").innerText(),"05");
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready" &&
+    window.AIOAgents3D.snapshot().length===4,null,{timeout:45000});
+  // A fifth hire waits for a station. When another worker goes on leave
+  // and physically exits, the waiting hire comes in without more clicks.
+  await page.evaluate(()=>window.AIOStudio.select("a4"));
+  await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
+  await page.waitForFunction(()=>{
+    const sofia=window.AIOStudio.getAgents().find(a=>a.name==="Sofia");
+    return sofia && window.AIOAgents3D.snapshot().some(a=>a.id===sofia.id && a.slot===3);
+  },null,{timeout:22000});
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().length),4);
 
   // Queue operations are explicit pending drafts, never faked AI work.
   await page.locator('[data-page="tasks"]').click();
