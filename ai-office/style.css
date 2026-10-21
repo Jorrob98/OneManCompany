@@ -306,3 +306,12 @@
 
 /* Avoid duplicate 2D "+" markers in a room where rigged 3D employees loaded. */
 .penthouse-stage.has-live-3d .penthouse-markers{opacity:0;pointer-events:none}
+
+/* Sprint 02 visual QA: small, legible mobile worker labels. */
+@media(max-width:750px){
+ .office-agent-select{min-width:52px;min-height:25px;padding:5px 7px;font-size:10px}
+ .office-agent-select:not(.selected) .office-agent-mode{display:none}
+ .office-agent-select.selected{min-width:83px;max-width:110px}
+ .office-agent-select.selected .office-agent-mode{font-size:9px;line-height:1.2}
+ .office-agent-select:before{height:8px}
+}
