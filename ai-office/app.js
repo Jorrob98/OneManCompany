@@ -43,7 +43,7 @@ function load(){
       events:data.events.slice(0,80).filter(e=>e&&typeof e.message==="string").map(e=>({
         id:String(e.id),kind:String(e.kind).slice(0,5),message:String(e.message).slice(0,180),at:Number(e.at)||Date.now()
       })),
-      selected:String(data.selected||"a1"),mood:data.mood==="day"?"day":"evening"
+      selected:String(data.selected||"a1"),mood:["day","evening","night","auto"].includes(data.mood)?data.mood:"evening"
     };
   }catch{return initial();}
 }
