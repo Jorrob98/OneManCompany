@@ -123,9 +123,20 @@
 
 /* Penthouse background V2: preserve natural proportions of 1672x941 illustration. */
 .penthouse-artwork{object-fit:cover;object-position:center center}
-.penthouse-stage[data-background="empty-v2"] .penthouse-wash{
+.penthouse-stage[data-background="living-v3"] .penthouse-wash{
  background:linear-gradient(180deg,rgba(11,16,31,.08) 0%,transparent 44%,rgba(15,17,26,.07) 100%)
 }
 @media(max-width:750px){
- .penthouse-stage[data-background="empty-v2"] .penthouse-surface{width:667px;min-width:667px}
+ .penthouse-stage[data-background="living-v3"] .penthouse-surface{width:667px;min-width:667px}
+}
+
+/* Living Office V3: small human-scale shadows and calm 3D labels. */
+.penthouse-stage[data-background="living-v3"] .office-agent-select{
+  border-color:rgba(132,186,194,.6);
+  background:rgba(9,18,32,.83);
+  box-shadow:0 5px 16px rgba(0,0,0,.38);
+}
+.penthouse-stage[data-background="living-v3"] .office-agent-select .office-agent-mode{color:#c2d9df}
+@media (prefers-reduced-motion:reduce){
+  .penthouse-surface,.penthouse-artwork{transition:none!important}
 }
