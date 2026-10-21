@@ -58,7 +58,7 @@ try {
     .find(a => a.id === "a1")?.goal),"meeting");
   await page.waitForFunction(() => window.AIOAgents3D.snapshot()
     .find(a => a.id === "a1")?.point === "meeting",null,{timeout:13000});
-  assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/In riunione/);
+  assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/Parla con colleghi/);
   await page.locator('[data-action="agent-desk"][data-id="a1"]').click();
   assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
     .find(a => a.id === "a1")?.goal),"desk");
