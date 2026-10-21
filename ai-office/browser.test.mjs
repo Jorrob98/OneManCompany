@@ -78,6 +78,7 @@ try {
   assert.ok(seated.rigLegs>=2,"Leg bones were not detected on the real rigged model");
   assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/Seduto/);
   await page.screenshot({path:"ai-office/office-seated-desktop.png"});
+  await page.locator("#penthouseStage").screenshot({path:"ai-office/office-seated-scene.png"});
   // Clicking another room raises the employee from the seated pose before walking.
   await page.locator('[data-action="agent-lounge"][data-id="a1"]').click();
   await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sittingBlend<.12,
