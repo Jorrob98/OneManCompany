@@ -36,4 +36,5 @@ jobs:
           path: |
             ai-office/office-premium-desktop.png
             ai-office/office-seated-desktop.png
+            ai-office/office-seated-scene.png
             ai-office/office-premium-mobile.png
