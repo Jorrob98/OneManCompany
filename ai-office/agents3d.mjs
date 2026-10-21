@@ -338,6 +338,9 @@ function removeActor(actor){
   });
   stagePeople.delete(actor.id);
   info.agents=Array.from(stagePeople.keys());
+  // A new hire waiting for a fourth seat enters automatically as soon as
+  // a vacation/retirement exit releases it. No extra UI click required.
+  queueMicrotask(()=>{if(info.status==="ready")sync();});
 }
 function sync() {
   if(info.status!=="ready")return;
