@@ -41,7 +41,10 @@ try {
   }));
   assert.equal(agentState.status,"ready",JSON.stringify(agentState));
   assert.equal(agentState.agents.length,4);
-  assert.deepEqual(await page.evaluate(()=>window.AIOAgents3D.activeClips),["idle","walk"]);
+  const clips=await page.evaluate(()=>window.AIOAgents3D.activeClips);
+  assert.ok(clips.includes("idle")&&clips.includes("walk"),"Main GLB movement clips missing");
+  assert.ok(clips.some(c=>c==="think"||c==="look"),"Natural office gestures missing");
+
   const firstPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
   await page.waitForTimeout(1100);
   const nextPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
@@ -59,6 +62,16 @@ try {
   await page.locator('[data-action="agent-desk"][data-id="a1"]').click();
   assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
     .find(a => a.id === "a1")?.goal),"desk");
+  await page.waitForFunction(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.point === "desk",null,{timeout:15000});
+  const worker=await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .find(a=>a.id==="a1"));
+  assert.equal(worker.activity,"Al computer","Employee is not at a real work location");
+  assert.equal(worker.routeSegments,0,"Employee still has unfinished path segments");
+  await page.waitForTimeout(2200);
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .find(a=>a.id==="a1")?.goal),"desk","Employee wandered away immediately instead of working");
+
 
 
   await page.screenshot({path:"ai-office/office-premium-desktop.png"});
