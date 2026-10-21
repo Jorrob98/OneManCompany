@@ -41,6 +41,13 @@ try {
   }));
   assert.equal(agentState.status,"ready",JSON.stringify(agentState));
   assert.equal(agentState.agents.length,4);
+  const initialSlots=await page.evaluate(()=>window.AIOAgents3D.snapshot().map(a=>a.slot));
+  assert.deepEqual(initialSlots,[0,1,2,3],"Workstations were not assigned uniquely");
+  const route=await page.evaluate(()=>window.AIOAgents3D.snapshot()[0].routeNodes);
+  assert.ok(route.length>=2,"Office navigation is not using corridors");
+  assert.ok(route.some(n=>n==="deskDoor0"||n==="westAisle"),
+    "Worker is walking through the furniture rather than using the aisle");
+
   const uniqueModels=await page.evaluate(()=>window.AIOAgents3D.snapshot().map(a=>a.modelStyle));
   assert.deepEqual(uniqueModels,["f1","m1","f2","m2"],"Employees are still duplicated 3D characters");
   assert.equal((await page.evaluate(()=>window.AIOAgents3D.modelVariants)).length,8);
@@ -125,6 +132,18 @@ try {
   await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sittingBlend<.12,
     null,{timeout:8000});
   assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.goal),"lounge");
+  const loungeRoute=await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.routeNodes);
+  assert.equal(loungeRoute.at(-1),"lounge0");
+  assert.ok(loungeRoute.includes("loungeAisle"),"Employee is bypassing the lounge entrance");
+  // Vacation sends an employee towards the exit; recall interrupts the exit
+  // without changing the desk reservations of the other three employees.
+  await page.evaluate(()=>window.AIOStudio.select("a4"));
+  await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a4")?.goal==="entry");
+  assert.deepEqual(await page.evaluate(()=>window.AIOAgents3D.snapshot().filter(a=>a.id!=="a4").map(a=>a.slot)),[0,1,2]);
+  await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a4")?.goal==="desk",null,{timeout:8000});
+
 
 
 
