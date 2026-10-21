@@ -233,7 +233,7 @@ function build(a,index) {
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
     handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
     restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,seatOcclusion,
-    typingActive:false,arrivedCount:0,activity:"Ingresso"};
+    typingActive:false,arrivedCount:0,activity:"Ingresso",normalScale:factor,contactShadow:shade,depthScale:1};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
   body.traverse(node=>{
     if(!node.isBone)return;
@@ -404,7 +404,14 @@ function seatedPose(actor,delta,time){
   actor.body.position.y=actor.baseBodyY-.50*weight;
   // Seated shoulders/head must actually drop to monitor height in this
   // orthographic 2.5D composition, not hover above the workstation.
-  actor.body.scale.y=actor.body.scale.x*(1-.14*weight);
+  // Perspective-correct 2.5D sizing: smaller by the window, larger near camera.
+  const yy=(.5-actor.holder.position.y/DIM_Y)*100;
+  const distanceFactor=THREE.MathUtils.clamp(.85+yy*.00225,.93,1.06);
+  actor.depthScale=distanceFactor;
+  const scalar=actor.normalScale*distanceFactor;
+  actor.body.scale.set(scalar,scalar*(1-.14*weight),scalar);
+  actor.contactShadow.scale.setScalar(THREE.MathUtils.clamp(distanceFactor,.93,1.06));
+  actor.contactShadow.material.opacity=(actor.state==="walk"?.70:.82)*(1-.10*weight);
   actor.seatOcclusion.constant=10*(1-weight)-(.10+(.04*actor.index))*weight;
   if(weight<.005)return;
   const signing=(key,angle,axis=xAxis)=>{
@@ -541,6 +548,7 @@ info.command=(id,zone)=>{
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
   modelStyle:a.style,color:a.color,fingers:a.poseBones.finger.length,
+  depthScale:Number(a.depthScale.toFixed(3)),shadowOpacity:Number(a.contactShadow.material.opacity.toFixed(2)),
   posture:a.seatedWeight>.75?"sitting":a.seatedWeight>.08?"transition":"standing",
   sittingBlend:Number(a.seatedWeight.toFixed(3)),typing:a.typingActive,
   rigLegs:a.poseBones.thigh.length+a.poseBones.calf.length,
@@ -575,5 +583,27 @@ async function init() {
     renderer.domElement.remove();
   }
 }
+const lightStyles={
+  day:{sky:0xf6f1e2,ground:0x5f594d,ambient:2.32,key:3.14,fill:1.15,exposure:1.19},
+  evening:{sky:0xeaf0ff,ground:0x493f37,ambient:2.10,key:3.20,fill:1.70,exposure:1.25},
+  night:{sky:0x9cb9ea,ground:0x343d52,ambient:1.90,key:2.35,fill:2.15,exposure:1.35}
+};
+function setEnvironmentLight(mode) {
+  const preset=lightStyles[mode]||lightStyles.evening;
+  const hemisphere=world.children.find(x=>x.isHemisphereLight);
+  if(hemisphere) {
+    hemisphere.color.setHex(preset.sky);hemisphere.groundColor.setHex(preset.ground);
+    hemisphere.intensity=preset.ambient;
+  }
+  key.intensity=preset.key;
+  key.color.setHex(mode==="night"?0xc5d9ff:0xffdec5);
+  fill.intensity=preset.fill;
+  fill.color.setHex(mode==="day"?0xa8bfc6:0x8cb5fc);
+  if(renderer)renderer.toneMappingExposure=preset.exposure;
+  info.environmentMode=mode;
+}
+window.addEventListener("studio:environment-light",e=>setEnvironmentLight(e.detail?.mode));
+setEnvironmentLight(bridge.getMood()==="day"?"day":bridge.getMood()==="night"?"night":"evening");
+
 window.addEventListener("studio:changed",sync);
 init();
