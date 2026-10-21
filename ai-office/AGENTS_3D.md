@@ -52,3 +52,12 @@ Il sito usa `assets/penthouse-empty-v2.webp`, scena nuova senza personaggi incor
 ## Living Office V3 — 21 ottobre 2026
 
 Lo sfondo pubblicato è ora `assets/penthouse-living-v3.webp`, un nuovo ambiente senza figure statiche con grande open space, postazioni multiple e sala riunioni. `agents3d.mjs` mantiene i quattro avatar reali e aggiunge gesti di lettura/riflessione al computer, conversazioni, percorsi con passaggi nei corridoi e soste più lunghe alle scrivanie, così non vagano continuamente. I gesti sono rappresentazioni visive, non esecuzioni AI. Il nuovo ambiente è 2.5D e resta un asset illustrato: i modelli 3D sono sovrapposti, senza collisioni complete con l'arredamento.
+
+## Seduta e attività computer — Living Office V4
+
+- Quando un avatar arriva alla sua postazione, il motore applica una **posa seduta procedurale** al rig Biped (cosce, polpacci, busto, braccia), con transizione graduale.
+- Le braccia e gli avambracci compiono **micro-movimenti di digitazione**, intervallati da momenti di lettura del monitor. Le trasformazioni delle ossa sono ripristinate a ogni frame, evitando rotazioni accumulate.
+- Quando riceve un comando di movimento, il personaggio **si rialza prima di partire**. Le ferie continuano a provocarne l'uscita.
+- Il test in Chrome verifica posa seduta, ossa delle gambe, stato del lavoro e transizione di rialzata.
+- **Limite visivo**: il catalogo originale non offre clip dedicate a seduta e digitazione; queste pose sono create in JavaScript e restano sperimentali. Arredi e sedie appartengono ancora al render 2.5D, quindi occlusione e contatto con la sedia non sono fisicamente esatti.
+- La digitazione è una simulazione **grafica**, non dimostra che sia stato svolto un incarico reale.
