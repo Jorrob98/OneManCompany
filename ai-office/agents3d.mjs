@@ -1,5 +1,5 @@
 /**
- * AI OFFICE — Living Office 3: natural work loops, posture and movement.
+ * AI OFFICE — Living Office 4: seated desk routines and procedurally posed rigged employees.
  * Real GLB rigged humans + separate Biped animation clips; three.js/WebGL.
  * MIT model/clip licensing: https://models.codelove.in/licensing
  * Motion is only a simulation of office presence, NEVER evidence of task execution.
@@ -190,23 +190,33 @@ function build(a,index) {
     next:0,routeIndex:0,closing:false,manualUntil:0,hit:null,
     motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
-    handBones:[],arrivedCount:0,activity:"Ingresso"};
+    handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],spine:[],head:[]},
+    restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,
+    typingActive:false,arrivedCount:0,activity:"Ingresso"};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
   body.traverse(node=>{
     if(!node.isBone)return;
     const name=node.name.toLowerCase();
-    if(/(forearm|fore_arm|lowerarm|lower_arm)/.test(name))actor.handBones.push(node);
+    if(/(forearm|fore_arm|lowerarm|lower_arm)/.test(name)){
+      actor.handBones.push(node);actor.poseBones.forearm.push(node);
+    } else if(/thigh|upperleg|upper_leg/.test(name))actor.poseBones.thigh.push(node);
+    else if(/calf|shin|lowerleg|lower_leg/.test(name))actor.poseBones.calf.push(node);
+    else if(/upperarm|upper_arm/.test(name))actor.poseBones.arm.push(node);
+    else if(/spine/.test(name))actor.poseBones.spine.push(node);
+    else if(/head/.test(name))actor.poseBones.head.push(node);
   });
+  // Absent rig groups never crash the page: UI still shows the agent at work.
+  info.rigBones=info.rigBones||{};
+  info.rigBones[a.id]=Object.fromEntries(Object.entries(actor.poseBones).map(([kind,nodes])=>[kind,nodes.length]));
   nameButton(a,actor);
   stagePeople.set(a.id,actor);
   moveToZone(actor,"desk");
   info.agents=Array.from(stagePeople.keys());
 }
 function postureClip(actor){
-  // There is no real sitting/typing clip in the free pack: use short natural
-  // look/think gestures and arm movement, without faking an actual seated rig.
-  if(actor.point==="desk")return actor.actions.think && actor.workMode==="think"?"think":
-    actor.actions.look && actor.workMode==="look"?"look":"idle";
+  // The asset pack has no licensed sit/typing clip; leg bends and keyboard
+  // motions are built from its real Biped skeleton, blended over idle.
+  if(actor.point==="desk")return "idle";
   if(actor.point==="meeting")return actor.actions.talk?"talk":"idle";
   return actor.actions.look?"look":"idle";
 }
@@ -226,7 +236,8 @@ function updateClip(actor,next){
       actor.point==="meeting"?"Parla con colleghi":
       actor.point==="lounge"?"In pausa":
       next==="think"?"Controlla i dati":
-      next==="look"?"Legge il monitor":"Al computer";
+      next==="look"?"Legge il monitor":
+      actor.point==="desk"?"Al computer · seduto":"Al computer";
   }
 }
 // Corridor waypoints steer workers around the central console island. Positions
@@ -302,13 +313,62 @@ function sync() {
   const chosen=bridge.getSelected();
   stagePeople.forEach(actor=>actor.hit?.classList.toggle("selected",chosen===actor.id));
 }
+/**
+ * Apply an additive procedural seated posture to the existing *rigged* GLB
+ * character. Restore the baseline every frame, then let AnimationMixer
+ * update it, then apply a fresh offset (prevents accumulating rotations).
+ * The office remains a 2.5D background, not physical chair collisions.
+ */
+const xAxis=new THREE.Vector3(1,0,0);
+const yAxis=new THREE.Vector3(0,1,0);
+const tilt=new THREE.Quaternion();
+function seatedPose(actor,delta,time){
+  const target=actor.point==="desk"&&actor.state!=="walk"&&!actor.closing?1:0;
+  actor.seatedWeight=THREE.MathUtils.damp(actor.seatedWeight,target,5.2,delta);
+  const weight=actor.seatedWeight;
+  // Actual hips lower as legs bend; body is still parented to its walking anchor.
+  actor.body.position.y=actor.baseBodyY-.12*weight;
+  if(weight<.005)return;
+  const signing=(key,angle,axis=xAxis)=>{
+    const nodes=actor.poseBones[key];
+    if(!nodes?.length)return;
+    tilt.setFromAxisAngle(axis,angle*weight);
+    for(const bone of nodes){
+      actor.restoredRotations.set(bone,bone.quaternion.clone());
+      bone.quaternion.multiply(tilt);
+    }
+  };
+  // Biped thigh/calf hinges. Small spine lean and forward arms for typing.
+  signing("thigh",1.20);
+  signing("calf",-1.26);
+  signing("spine",-.11);
+  signing("arm",-.30);
+  const isTyping=actor.point==="desk" && actor.workMode==="work" && !reducedMotion.matches;
+  actor.typingActive=isTyping;
+  const stroke=isTyping?.10*Math.sin(time*.009+actor.motionSeed):.01;
+  const nodes=actor.poseBones.forearm;
+  for(let i=0;i<nodes.length;i++){
+    const bone=nodes[i];
+    tilt.setFromAxisAngle(xAxis,weight*(-.5+(i%2===0?stroke:-stroke)));
+    actor.restoredRotations.set(bone,bone.quaternion.clone());
+    bone.quaternion.multiply(tilt);
+  }
+  // Monitor-reading: subtle head turns, without constantly waving.
+  if(actor.workMode==="look" && !reducedMotion.matches){
+    signing("head",.055*Math.sin(time*.0009+actor.motionSeed),yAxis);
+  }
+}
 function animateActor(actor,delta,time){
+  for(const [bone,quaternion] of actor.restoredRotations)bone.quaternion.copy(quaternion);
+  actor.restoredRotations.clear();
   actor.mixer.update(delta);
   if(actor.state==="walk"){
     const distance=actor.from.distanceTo(actor.to);
+    // Finish standing up before the character moves away from its chair.
+    const standingDelay=actor.seatedWeight>.12;
     // No extreme acceleration or constant zig-zags. Natural pace with
     // smooth arrival and a moderate turn toward the travel direction.
-    actor.travel=Math.min(1,actor.travel+delta*actor.walkSpeed/Math.max(distance,.1));
+    actor.travel=Math.min(1,actor.travel+(standingDelay?0:delta*actor.walkSpeed/Math.max(distance,.1)));
     const p=actor.travel;
     const f=p<.12?(p*p/.12):p>.87?1-(1-p)*(1-p)/.13:p;
     actor.holder.position.lerpVectors(actor.from,actor.to,Math.max(0,Math.min(1,f)));
@@ -337,12 +397,7 @@ function animateActor(actor,delta,time){
         actor.workMode=nextMode;
         updateClip(actor,postureClip(actor));
       }
-      actor.handBones.forEach((bone,i)=>{
-        // Animations set bone pose each mixer.update. Apply a small temporary
-        // rotation after it; no accumulated distortion frame to frame.
-        const strength=.045*Math.sin(time*.0038+i*2.1+actor.motionSeed);
-        bone.rotateX(strength);
-      });
+
     }
     const breakAfter=actor.index===0?70:actor.index===1?95:actor.index===2?82:105;
     if(actor.wait>breakAfter && !reducedMotion.matches && performance.now()>actor.manualUntil){
@@ -355,6 +410,13 @@ function animateActor(actor,delta,time){
       actor.gestureTimer=0;
       updateClip(actor,actor.state==="talk"?"idle":(actor.actions.talk?"talk":"idle"));
     }
+  }
+  // Posture is applied *after* the mixer and locomotion, with stable quaternions.
+  seatedPose(actor,delta,time);
+  if(actor.hit && actor.point==="desk" && actor.seatedWeight>.75){
+    const label=actor.hit.querySelector(".office-agent-mode");
+    if(label)label.textContent=actor.typingActive?"Seduto · digita al PC":
+      actor.workMode==="look"?"Seduto · legge":"Seduto · lavora";
   }
   if(actor.hit){
     const projected=actor.holder.position.clone();
@@ -385,6 +447,9 @@ info.command=(id,zone)=>{
 };
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
+  posture:a.seatedWeight>.75?"sitting":a.seatedWeight>.08?"transition":"standing",
+  sittingBlend:Number(a.seatedWeight.toFixed(3)),typing:a.typingActive,
+  rigLegs:a.poseBones.thigh.length+a.poseBones.calf.length,
   activity:a.point==="desk"?"Al computer":a.point==="meeting"?"Riunione":a.point==="lounge"?"Pausa":"Ingresso",
   routeSegments:a.path.length,arrivals:a.arrivedCount
 }));
