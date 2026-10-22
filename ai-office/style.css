@@ -492,3 +492,16 @@
     transform:none;
   }
 }
+
+/* Shared-world real 3D office (default); old photo kept only for ?legacy=1 fallback. */
+.scene-wrap.real3d-active{background:#d7dcda}
+.scene-wrap.real3d-active .penthouse-stage{display:none!important}
+.scene-wrap.real3d-active #roomCanvas{visibility:hidden}
+.scene-wrap.real3d-active .office3d-canvas{
+  position:absolute;inset:0;z-index:5;width:100%;height:100%;
+  display:block;touch-action:none;cursor:grab;
+}
+.scene-wrap.real3d-active .office3d-canvas:active{cursor:grabbing}
+.scene-wrap.real3d-active .room-hint,
+.scene-wrap.real3d-active .scene-watermark{z-index:6}
+.scene-wrap.real3d-active:after{display:none}
