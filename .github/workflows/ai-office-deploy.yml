@@ -115,3 +115,37 @@ jobs:
           if not valid:
               raise SystemExit("Worker was uploaded, but the public API endpoint did not return AI OFFICE JSON.")
           PY
+
+      - name: Verify deployed secret metadata and authorization status (no secret values)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npx --yes wrangler@4 secret list --config cloudflare/wrangler.toml --format json | python3 -c '
+          import json,sys
+          names={x.get("name") for x in json.load(sys.stdin)}
+          print("Encrypted operator key configured on deployed Worker:", "AI_OFFICE_API_KEY" in names)
+          '
+          python3 - <<'PY'
+          import urllib.request,urllib.error,json
+          endpoint="https://ai-office-api.jorrob98.workers.dev/api/ai/generate"
+          for origin in ("", "https://emergent-node-mffq999.shipstatic.com"):
+              headers={"content-type":"application/json"}
+              if origin:headers["Origin"]=origin
+              req=urllib.request.Request(endpoint,
+                  data=b'{"title":"AI Office configuration probe"}',
+                  method="POST",headers=headers)
+              try:
+                  with urllib.request.urlopen(req,timeout=12) as resp:
+                      status=resp.status;result=json.loads(resp.read(4000))
+              except urllib.error.HTTPError as exc:
+                  status=exc.code
+                  try:result=json.loads(exc.read(4000))
+                  except:result={}
+              except Exception as exc:
+                  print("API probe error",type(exc).__name__);continue
+              print("Unauthorized request with origin:",bool(origin),
+                    "HTTP:",status,"code:",result.get("error","unknown"))
+          PY
