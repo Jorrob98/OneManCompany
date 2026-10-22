@@ -615,7 +615,7 @@ info.rigDiagnostics=(id)=> {
   actor.body.updateMatrixWorld(true);
   const sample=(kind)=>actor.poseBones[kind].map(b=>{
     const p=b.getWorldPosition(new THREE.Vector3());
-    return {name:b.name,x:Number(p.x.toFixed(3)),y:Number(p.y.toFixed(3)),
+    return {name:b.name,parent:b.parent?.name||"",x:Number(p.x.toFixed(3)),y:Number(p.y.toFixed(3)),
       z:Number(p.z.toFixed(3)),rotation:[b.rotation.x,b.rotation.y,b.rotation.z].map(x=>Number(x.toFixed(2)))};
   });
   return {height:actor.avatarHeight,point:actor.point,
