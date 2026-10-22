@@ -239,6 +239,56 @@ try {
   await page.reload({waitUntil:"domcontentloaded"});
   assert.equal(await page.locator("#statTasks").innerText(),"01");
 
+  // Sprint 05 — director-led meeting and verifiable interactions.
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
+  await page.locator('[data-page="collab"]').click();
+  assert.equal(await page.locator('[data-view="collab"].active').count(),1);
+  await page.locator('[data-collab-action="new-meeting"]').click();
+  await page.locator("#meetingTitle").fill("Revisione UX");
+  await page.locator("#meetingAgenda").fill("Condividere proposte di miglioramento");
+  await page.locator('#meetingForm button[type="submit"]').click();
+  assert.equal(await page.locator('[data-meeting-id]').count(),1);
+  const meetingId=await page.locator('[data-meeting-id]').first().getAttribute("data-meeting-id");
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="start-meeting"]').click();
+  assert.equal(await page.locator("#collabMeetingsCount").innerText(),"1");
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().filter(a=>
+    ["a1","a2","a3"].includes(a.id)).every(a=>a.goal==="meeting"&&a.sessionMeeting),
+    null,{timeout:10000});
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="speaker"][data-agent="a1"]').click();
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sessionSpeaker),true);
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="decision"]').click();
+  await page.locator("#decisionText").fill("Confermata revisione delle etichette mobile");
+  await page.locator('#meetingDecisionForm button[type="submit"]').click();
+  assert.match(await page.locator('[data-meeting-id="'+meetingId+'"]').innerText(),/Confermata revisione delle etichette mobile/);
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="end-meeting"]').click();
+  assert.equal(await page.locator("#collabMeetingsCount").innerText(),"0");
+
+  // Create a pending draft assigned to Nora, then manually approve and transfer it to Leo.
+  await page.locator('[data-page="tasks"]').click();
+  await page.locator('[data-view="tasks"] .head-button[data-action="new-task"]').click();
+  await page.locator("#taskTitle").fill("Bozza design condivisa");
+  await page.locator("#taskAgent").selectOption("a1");
+  await page.locator('#taskForm button[type="submit"]').click();
+  const sharedTask=await page.evaluate(()=>window.AIOStudio.getTasks().find(t=>t.title==="Bozza design condivisa"));
+  assert.equal(sharedTask.agent,"a1");
+  await page.locator('[data-page="collab"]').click();
+  await page.locator('[data-collab-action="new-request"]').click();
+  await page.locator("#collabFrom").selectOption("a1");
+  await page.locator("#collabTo").selectOption("a2");
+  await page.locator("#collabTopic").fill("Passaggio bozza per revisione");
+  await page.locator("#collabTask").selectOption(sharedTask.id);
+  await page.locator('#collabRequestForm button[type="submit"]').click();
+  const requestId=await page.locator("[data-request-id]").first().getAttribute("data-request-id");
+  await page.locator('[data-request-id="'+requestId+'"] [data-collab-action="approve-request"]').click();
+  await page.locator('[data-request-id="'+requestId+'"] [data-collab-action="handoff"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getTasks().find(t=>t.id===id)?.agent,sharedTask.id),"a2");
+  assert.match(await page.locator('[data-request-id="'+requestId+'"]').innerText(),/BOZZA RIASSEGNATA/);
+  assert.ok((await page.locator("#collabLedger").innerText()).includes("Passaggio confermato"));
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.equal(await page.locator('[data-meeting-id="'+meetingId+'"]').count(),1);
+  assert.equal(await page.locator('[data-request-id="'+requestId+'"]').count(),1);
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getTasks().find(t=>t.id===id)?.agent,sharedTask.id),"a2");
+
   // Mobile layout: no horizontal page overflow, navigation available.
   await page.setViewportSize({width:390,height:844});
   await page.waitForTimeout(300);
