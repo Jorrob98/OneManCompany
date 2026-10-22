@@ -82,15 +82,16 @@ const available=()=>state.agents.filter(a=>a.status==="available");
 const active=()=>state.agents.filter(a=>a.status!=="retired");
 const short=n=>String(n).padStart(2,"0");
 function navigate(page){
-  if(!["office","people","tasks","activity"].includes(page))page="office";
+  if(!["office","people","tasks","collab","activity"].includes(page))page="office";
   document.querySelectorAll("[data-view]").forEach(el=>el.classList.toggle("active",el.dataset.view===page));
   document.querySelectorAll("[data-page]").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
-  $("crumbName").textContent=({office:"Ufficio",people:"Dipendenti",tasks:"Incarichi",activity:"Attività"})[page];
+  $("crumbName").textContent=({office:"Ufficio",people:"Dipendenti",tasks:"Incarichi",collab:"Collaborazione",activity:"Attività"})[page];
   if(location.hash!=="#"+page)history.replaceState(null,"","#"+page);
   window.scrollTo({top:0,behavior:"smooth"});
   if(page==="people")renderPeople();
   if(page==="tasks")renderTasks();
   if(page==="activity")renderActivity();
+  if(page==="collab")window.AIOCollab?.render();
   if(page==="office")requestAnimationFrame(()=>{resizeCanvas();window.dispatchEvent(new Event("studio:office-visible"));});
 }
 function renderAll(){
@@ -299,7 +300,7 @@ function action(kind,id){
  if(kind==="delete-task"){
    const t=state.tasks.find(e=>e.id===id);if(t){state.tasks=state.tasks.filter(e=>e.id!==id);activity("×","Incarico eliminato: "+t.title);renderAll();toast("Incarico eliminato.");}return;
  }
- if(kind==="confirm-reset"){state=initial();closeModal();navigate("office");renderAll();toast("Studio ripristinato.");}
+ if(kind==="confirm-reset"){state=initial();window.dispatchEvent(new Event("studio:reset"));closeModal();navigate("office");renderAll();toast("Studio ripristinato.");}
 }
 document.addEventListener("click",event=>{
  const nav=event.target.closest("[data-page]");if(nav){navigate(nav.dataset.page);return;}
@@ -574,7 +575,22 @@ $("roomZoom").addEventListener("click",()=>{largeView=!largeView;resizeCanvas();
 $("roomMood").addEventListener("click",()=>{const modes=["evening","day","night","auto"];state.mood=modes[(modes.indexOf(state.mood)+1)%modes.length];save();window.dispatchEvent(new Event("studio:atmosphere"));toast(({day:"Luce diurna",evening:"Tramonto",night:"Luce notturna",auto:"Ambiente automatico"})[state.mood]);});
 window.addEventListener("resize",resizeCanvas);
 if("ResizeObserver" in window)new ResizeObserver(resizeCanvas).observe(canvas);
-window.AIOStudio={getAgents:()=>state.agents,getSelected:()=>state.selected,getMood:()=>state.mood,select:id=>{if(state.agents.some(a=>a.id===id&&a.status!=="retired")){state.selected=id;renderAll();}}};
-renderAll();navigate(["office","people","tasks","activity"].includes(location.hash.slice(1))?location.hash.slice(1):"office");
+window.AIOStudio={
+ getAgents:()=>state.agents,getTasks:()=>state.tasks.map(t=>({...t})),
+ getSelected:()=>state.selected,getMood:()=>state.mood,
+ openModal:(title,contents)=>openModal(title,contents),closeModal,toast,
+ logEvent:(kind,message)=>{activity(String(kind).slice(0,4),String(message).slice(0,180));renderAll();},
+ transferTask:(taskId,fromId,toId)=>{
+   const task=state.tasks.find(t=>t.id===taskId);
+   const target=state.agents.find(a=>a.id===toId);
+   if(!task||!target||target.status!=="available"||task.agent!==fromId||fromId===toId||
+     assignedCount(toId)>=3)return false;
+   task.agent=toId;
+   activity("↗","Incarico in attesa «"+task.title+"» riassegnato a "+target.name+" su conferma del direttore.");
+   renderAll();return true;
+ },
+ select:id=>{if(state.agents.some(a=>a.id===id&&a.status!=="retired")){state.selected=id;renderAll();}}
+};
+renderAll();navigate(["office","people","tasks","collab","activity"].includes(location.hash.slice(1))?location.hash.slice(1):"office");
 resizeCanvas();raf=requestAnimationFrame(loop);
 })();
