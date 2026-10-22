@@ -143,9 +143,12 @@ test("Only real AI.run output is accepted as a completed generated draft",async(
 });
 test("AI never reports generated output when model errors or yields empty text",async()=>{
   const input={title:"Sintesi",details:"",role:"Designer"};
-  for(const run of [async()=>{throw Error("quota exceeded")},async()=>({response:" "})]){
+  for(const [run,expected] of [
+    [async()=>{throw Error("quota exceeded");},429],
+    [async()=>({response:" "}),502]
+  ]){
     const res=await worker.fetch(requestAI(input),{...aiEnv(),AI:{run}},ctx());
-    assert.equal(res.status,502);
+    assert.equal(res.status,expected);
     assert.equal((await res.json()).ok,false);
   }
 });
