@@ -78,6 +78,21 @@ function json(body, status = 200, extraHeaders = {}) {
       ...RESPONSE_HEADERS, ...extraHeaders }
   });
 }
+function operatorKeyConfigured(env) {
+  return typeof env.AI_OFFICE_API_KEY === "string" &&
+    /^[A-Za-z0-9_-]{24,200}$/.test(env.AI_OFFICE_API_KEY);
+}
+function configuredOrigins(env) {
+  return String(env.AI_OFFICE_ALLOWED_ORIGINS || "").split(",")
+    .map(v => v.trim()).filter(v => {
+      try {
+        const parsed = new URL(v);
+        return parsed.origin === v &&
+          (parsed.protocol === "https:" ||
+           (parsed.protocol === "http:" && ["localhost", "127.0.0.1"].includes(parsed.hostname)));
+      } catch { return false; }
+    });
+}
 function allowedOrigin(request, env) {
   const origin = request.headers.get("Origin");
   if (!origin) return { allowed: true, headers: {} };
@@ -87,8 +102,7 @@ function allowedOrigin(request, env) {
       !(originURL.protocol === "http:" && ["localhost","127.0.0.1"].includes(originURL.hostname))) {
     return { allowed: false, headers: {} };
   }
-  const list = String(env.AI_OFFICE_ALLOWED_ORIGINS || "").split(",")
-    .map(v => v.trim()).filter(Boolean);
+  const list = configuredOrigins(env);
   if (!list.includes(origin)) return { allowed: false, headers: {} };
   return { allowed: true, headers: {
     "access-control-allow-origin": origin, "vary": "Origin",
@@ -98,7 +112,7 @@ function allowedOrigin(request, env) {
   }};
 }
 async function keyIsValid(header, expected) {
-  if (typeof expected !== "string" || expected.length < 24 || expected.length > 200) return false;
+  if (typeof expected !== "string" || !/^[A-Za-z0-9_-]{24,200}$/.test(expected)) return false;
   const token = /^Bearer ([A-Za-z0-9_-]{24,200})$/.exec(header || "")?.[1];
   if (!token || !crypto?.subtle) return false;
   const encode = value => new TextEncoder().encode(value);
@@ -118,17 +132,18 @@ async function aiAPI(request, env, url) {
   if (url.pathname==="/api/ai/status") {
     if(request.method!=="GET")return json({ok:false,error:"method_not_allowed"},405,headers);
     const aiAvailable=typeof env.AI?.run==="function";
-    const operatorKeyValid=typeof env.AI_OFFICE_API_KEY==="string" &&
-      env.AI_OFFICE_API_KEY.length>=24 && env.AI_OFFICE_API_KEY.length<=200;
+    const operatorKeyValid=operatorKeyConfigured(env);
+    const originsConfigured=configuredOrigins(env).length>0;
     return json({ok:true,service:"ai-office",version:"sprint-06",
-      ready:aiAvailable&&operatorKeyValid,
-      setupIssue:!aiAvailable?"ai_binding_unavailable":!operatorKeyValid?"operator_secret_missing_or_short":null,
+      ready:aiAvailable&&operatorKeyValid&&originsConfigured,
+      setupIssue:!aiAvailable?"ai_binding_unavailable":!operatorKeyValid?"operator_secret_missing_or_short":
+        !originsConfigured?"allowed_origins_missing":null,
       engine:"cloudflare-workers-ai",onemancompany_runtime:"not-connected"},200,headers);
   }
   if (url.pathname!=="/api/ai/generate") return json({ok:false,error:"not_found"},404,headers);
   if (request.method!=="POST")return json({ok:false,error:"method_not_allowed"},405,headers);
   if (!env.AI?.run)return json({ok:false,error:"ai_binding_unavailable"},503,headers);
-  if (!env.AI_OFFICE_API_KEY)return json({ok:false,error:"operator_key_not_configured"},503,headers);
+  if (!operatorKeyConfigured(env))return json({ok:false,error:"operator_key_not_configured"},503,headers);
   if (!(await keyIsValid(request.headers.get("Authorization"), env.AI_OFFICE_API_KEY)))
     return json({ok:false,error:"unauthorized"},401,headers);
   if (!String(request.headers.get("content-type")||"").toLowerCase().startsWith("application/json"))
@@ -161,7 +176,13 @@ async function aiAPI(request, env, url) {
         {role:"user",content:prompt}],
       max_tokens:600,temperature:0.35
     });
-  } catch {
+  } catch (error) {
+    const message=String(error?.message || "").toLowerCase();
+    const limited=Number(error?.status)===429 || /rate.limit|too.many.requests/.test(message);
+    const quota=/quota|daily.limit|limit.exceeded/.test(message);
+    if(limited || quota)
+      return json({ok:false,error:quota?"ai_quota_exceeded":"ai_rate_limited",
+        retryable:!quota},429,headers);
     return json({ok:false,error:"inference_failed",retryable:true},502,headers);
   }
   const output=typeof result?.response==="string"?result.response.trim():"";
