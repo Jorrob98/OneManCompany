@@ -11,3 +11,9 @@ binding = "AI"
 # TELEGRAM_BOT_TOKEN
 # TELEGRAM_WEBHOOK_SECRET
 # TELEGRAM_OWNER_ID
+
+# Sprint 06 server-only configuration:
+# wrangler secret put AI_OFFICE_API_KEY
+# AI_OFFICE_ALLOWED_ORIGINS = exact comma-separated HTTPS preview origins,
+# configure as Worker variable in Cloudflare dashboard; never use *.
+# The existing Telegram secrets remain optional for /api/ai endpoints.
