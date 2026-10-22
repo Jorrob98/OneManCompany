@@ -80,9 +80,10 @@ function json(body, status = 200, extraHeaders = {}) {
 }
 // Accept short operator passwords (8–10 chars) with printable symbols, and
 // retain support for stronger existing secrets up to 200 chars. Never log keys.
+const OPERATOR_KEY_PATTERN = /^[\x21-\x7E]{8,200}$/;
 function operatorKeyConfigured(env) {
   return typeof env.AI_OFFICE_API_KEY === "string" &&
-    /^[\x21-\x7E]{8,200}$/.test(env.AI_OFFICE_API_KEY);
+    OPERATOR_KEY_PATTERN.test(env.AI_OFFICE_API_KEY);
 }
 function configuredOrigins(env) {
   return String(env.AI_OFFICE_ALLOWED_ORIGINS || "").split(",")
@@ -114,7 +115,7 @@ function allowedOrigin(request, env) {
   }};
 }
 async function keyIsValid(header, expected) {
-  if (typeof expected !== "string" || !/^[\x21-\x7E]{8,200}$/.test(expected)) return false;
+  if (typeof expected !== "string" || !OPERATOR_KEY_PATTERN.test(expected)) return false;
   const token = /^Bearer ([\x21-\x7E]{8,200})$/.exec(header || "")?.[1];
   if (!token || !crypto?.subtle) return false;
   const encode = value => new TextEncoder().encode(value);
