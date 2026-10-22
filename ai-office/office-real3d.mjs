@@ -41,7 +41,7 @@ if (!test.getContext("webgl2") && !test.getContext("webgl")) {
 
 let scene,camera,renderer,root,agency,night=true,selected="",resizeObserver=null,raf=0;
 const interactive=[],agents=new Map(),mouse=new THREE.Vector2(),raycaster=new THREE.Raycaster(),hotspots=[];
-let azimuth=.80,elevation=.69,distance=27,dragging=false,dragDistance=0,startX=0,startY=0,lastX=0,lastY=0,frame=0;
+let azimuth=.76,elevation=.60,distance=27,dragging=false,dragDistance=0,startX=0,startY=0,lastX=0,lastY=0,frame=0;
 const target=new THREE.Vector3(0,1.15,0);
 const colors={ink:0x111827,stone:0x27303d,slate:0x384352,wood:0x9a6a50,woodLight:0xc3926b,
  copper:0xe9a16a,glass:0x6c9db8,blue:0x4189d9,cyan:0x65e1df,violet:0x9a8cf1,cream:0xffe3b7};
@@ -410,10 +410,23 @@ function lights(){
 }
 function cameraUpdate(){
  elevation=THREE.MathUtils.clamp(elevation,.40,1.19);
- distance=THREE.MathUtils.clamp(distance,17,38);
+ distance=THREE.MathUtils.clamp(distance,9,38);
  camera.position.set(target.x+distance*Math.sin(azimuth)*Math.cos(elevation),
     target.y+distance*Math.sin(elevation),target.z+distance*Math.cos(azimuth)*Math.cos(elevation));
  camera.lookAt(target);
+}
+let lastMobile=null, cameraMode=0;
+function cameraPreset(mode){
+ cameraMode=mode;
+ info.cameraMode=["panoramica","postazioni","dipendente"][mode];
+ if(mode===0){target.set(0,1.15,0);distance=27;elevation=.60;}
+ else if(mode===1){target.set(-2.9,1.05,3.45);distance=16.5;elevation=.53;}
+ else{
+   const a=agents.get(selected)||agents.values().next().value;
+   target.set(a?.g.position.x??-2.9,1.1,a?.g.position.z??3.5);
+   distance=9.5;elevation=.44;
+ }
+ cameraUpdate();
 }
 function resize(){
  const rect=mount.getBoundingClientRect();
@@ -421,6 +434,12 @@ function resize(){
  const w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
  camera.aspect=w/h;camera.fov=w<660?48:38;camera.updateProjectionMatrix();
  renderer.setSize(w,h,false);renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,w<660?1.35:1.65));
+ const mobile=w<660;
+ if(lastMobile!==mobile){
+   lastMobile=mobile;
+   // Mobile starts on people, not a tiny overhead dollhouse.
+   cameraPreset(mobile?1:0);
+ }
 }
 function pointXY(event){
  const r=renderer.domElement.getBoundingClientRect();
@@ -453,10 +472,10 @@ function hookup(){
  renderer.domElement.addEventListener("pointermove",pointerMove);
  renderer.domElement.addEventListener("pointerup",pointerUp);
  renderer.domElement.addEventListener("pointercancel",()=>{dragging=false;});
- renderer.domElement.addEventListener("wheel",e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.015,17,38);cameraUpdate();},{passive:false});
+ renderer.domElement.addEventListener("wheel",e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.015,9,38);cameraUpdate();},{passive:false});
  document.getElementById("roomZoom").addEventListener("click",()=>{
-   // Old roomZoom handler toggles the unused 2D fallback; this handler updates the 3D camera.
-   distance=distance>24?19.5:28;cameraUpdate();
+   cameraPreset((cameraMode+1)%3);
+   document.getElementById("roomZoom").title="Camera: "+info.cameraMode;
  });
  document.getElementById("roomMood").addEventListener("click",()=>{
    // Listen after app.js changes the actual mood state.
