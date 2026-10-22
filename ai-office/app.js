@@ -34,7 +34,7 @@ const templates=[
 ];
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-function initial(){return {agents:templates.map(x=>({...x})),tasks:[],events:[{id:"welcome",kind:"✦",message:"Lo studio è pronto per essere personalizzato.",at:Date.now()}],selected:"a1",mood:"evening"};}
+function initial(){return {agents:templates.map(x=>({...x,department:departmentFor(x.role),level:"Junior",skills:skillsFor(x.role),leaveStart:"",leaveEnd:""})),tasks:[],events:[{id:"welcome",kind:"✦",message:"Lo studio è pronto per essere personalizzato.",at:Date.now()}],selected:"a1",mood:"evening"};}
 function load(){
   try {
     const data=JSON.parse(localStorage.getItem(KEY));
