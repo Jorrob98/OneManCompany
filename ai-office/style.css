@@ -359,3 +359,6 @@
  .personnel-skills-picker{grid-template-columns:1fr 1fr}
  .person-card .card-actions{flex-wrap:wrap}
 }
+
+/* Keep all personnel actions usable in narrow desktop cards as well as phones. */
+.person-card .card-actions{flex-wrap:wrap}
