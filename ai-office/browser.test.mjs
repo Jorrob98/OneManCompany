@@ -43,7 +43,7 @@ try {
   });
   const errors=[];
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
+  await page.goto("http://127.0.0.1:"+port+"/?legacy=1",{waitUntil:"domcontentloaded"});
   await page.locator("#statEmployees").waitFor();
   assert.equal(await page.locator("#statEmployees").innerText(),"04");
   // This project must render actual WebGL geometry, not a static image.
@@ -348,7 +348,7 @@ try {
   assert.ok(boardSizes.scroll<=boardSizes.viewport+2,"Horizontal overflow in collaboration page: "+JSON.stringify(boardSizes));
   await page.locator('[data-page="office"]').click();
   const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
-  await page.goto("http://127.0.0.1:"+port+"/#office",{waitUntil:"domcontentloaded"});
+  await page.goto("http://127.0.0.1:"+port+"/?legacy=1#office",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
   await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
   await page.waitForFunction(()=>document.querySelector("#penthouseStage")?.scrollLeft>80,null,{timeout:5000});
