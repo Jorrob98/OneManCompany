@@ -142,46 +142,21 @@ try {
   await page.waitForTimeout(2200);
   assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot()
     .find(a=>a.id==="a1")?.goal),"desk","Employee wandered away immediately instead of working");
-  const seated=await page.evaluate(()=>window.AIOAgents3D.snapshot()
+  // No fake seated state: the current 2.5D artwork has no aligned 3D
+  // workstation geometry. Real sitting remains blocked until visual QA passes.
+  const workerPose=await page.evaluate(()=>window.AIOAgents3D.snapshot()
     .find(a=>a.id==="a1"));
-  console.log("AIO seated GLB world-space joints",JSON.stringify(
-    await page.evaluate(()=>window.AIOAgents3D.rigDiagnostics("a1"))));
-  assert.equal(seated.posture,"sitting","Worker did not transition into a chair posture");
-  assert.ok(seated.sittingBlend>.75,"Seated pose did not finish blending");
-  assert.ok(seated.rigLegs>=2,"Leg bones were not detected on the real rigged model");
-  // Physical visibility invariants: no more subtracting almost an entire avatar
-  // height or hiding legs under an image cutout when the employee sits.
-  assert.ok(seated.avatarHeight>.38&&seated.avatarHeight<.65,
-    "Human GLB has implausible viewport size: "+JSON.stringify(seated));
-  assert.ok(seated.seatDrop>0&&seated.seatDrop<seated.avatarHeight*.34,
-    "Sitting lowered the character beyond the real chair's seat");
-  const joints=await page.evaluate(()=>window.AIOAgents3D.rigDiagnostics("a1"));
-  assert.equal(joints.thighs.length,2,"Seated skeleton has no hips");
-  assert.equal(joints.calves.length,2,"Seated skeleton has no knees");
-  assert.equal(joints.feet.length,2,"Seated skeleton has no ankles");
-  for(const thigh of joints.thighs){
-    const side=thigh.name.includes("_L_")?"_L_":"_R_";
-    const knee=joints.calves.find(x=>x.name.includes(side));
-    assert.ok(Math.abs(thigh.y-knee.y)<.15,
-      "Knee remains below hips: "+JSON.stringify({thigh,knee}));
-    assert.ok(Math.abs(thigh.y-.70)<.20,
-      "Pelvis is not aligned with the real 3D chair cushion: "+JSON.stringify(thigh));
-  }
-  for(const ankle of joints.feet){
-    assert.ok(ankle.y>=-.05&&ankle.y<=.12,
-      "Seated ankle passes through floor or floats: "+JSON.stringify(ankle));
-  }
-  assert.ok(Math.abs(seated.minFootY-.025)<.10,
-    "Seat has no ground contact: "+JSON.stringify(seated));
-  assert.equal(seated.clipEnabled,false,"Seated GLB is still clipping its own legs");
-  assert.equal(seated.chairVisible,true,"Seated employee has no actual 3D chair");
-  assert.equal(await page.locator(".aio-furniture-occlusion").evaluate(
-    el=>getComputedStyle(el).display),"none",
-    "Photographic furniture is hiding the GLB legs");
-  assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/Seduto/);
+  assert.equal(workerPose.posture,"standing","Do not fake a seated pose on photographic furniture");
+  assert.ok(workerPose.sittingBlend<.08,"Unverified seat pose reactivated");
+  assert.equal(workerPose.chairVisible,false,"Giant grey proxy chairs must not cover the office");
+  assert.ok(workerPose.location.y>=69,"Standing agent is hovering above the office floor");
+  assert.equal(workerPose.clipEnabled,false,"The human GLB must remain fully visible");
+  const deskLabel=await page.locator('.office-agent-select[data-agent-id="a1"]').innerText();
+  assert.match(deskLabel,/Alla postazione/);
+  assert.doesNotMatch(deskLabel,/Seduto|digita al PC/i);
   await page.screenshot({path:"ai-office/office-seated-desktop.png"});
   await page.locator("#penthouseStage").screenshot({path:"ai-office/office-seated-scene.png"});
-  // Clicking another room raises the employee from the seated pose before walking.
+  // A worker in the standing-at-desk fallback can leave without a fake rise.
   await page.locator('[data-action="agent-lounge"][data-id="a1"]').click();
   await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sittingBlend<.12,
     null,{timeout:8000});
