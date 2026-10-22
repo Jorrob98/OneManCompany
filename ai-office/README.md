@@ -1,36 +1,27 @@
-# AI OFFICE — Penthouse Control
+# AI OFFICE Studio — Stato pubblicato
 
-Questa cartella contiene la nuova applicazione web **AI OFFICE Studio** collegata al fork di OneManCompany.
-La versione attuale usa una **scena premium illustrata pre-renderizzata** come asset locale
-(`assets/penthouse-hero.webp`), con interazioni di gestione aggiunte via JavaScript.
-Il rendering approvato riguarda solo l'ambiente dell'ufficio, non è una schermata
-statica dell'intera interfaccia.
+**Preview verificata:** https://ai-office-api.jorrob98.workers.dev/
 
-## Funzioni disponibili nell'anteprima
+Il frontend `ai-office/` viene pubblicato sul **Worker Cloudflare esistente** `ai-office-api` e usa `office-real3d.mjs` come scena predefinita.
 
-- Grafica premium e ufficio panoramico in `index.html` con asset locale.
-- Segnaposto selezionabili degli agenti sul render; si aggiornano in base agli agenti disponibili.
-- Assunzione, ferie, pensionamento e reintegro degli agenti nel browser.
-- Creazione ed eliminazione incarichi in attesa, diario di attività locale.
-- Layout desktop + mobile con panoramica scorrevole; zoom e filtro d'illuminazione.
-- Dati dell'anteprima salvati solo su `localStorage`, senza sincronizzazione cloud.
+## Cosa funziona
 
-## Limitazioni esplicite
+- Ufficio geometrico interamente 3D in Three.js: pavimento, sedie, scrivanie e persone nello stesso spazio metrico, non su una fotografia.
+- Quattro avatar GLB riggati, dimensionati tramite articolazioni reali; posture con bacino all'altezza delle sedie. Test di contatto geometrico nel browser.
+- Camera orbitale, zoom e tre modalità di inquadratura; impostazioni responsive.
+- Interfaccia per personale, incarichi, riunioni/attività e risultati di bozze AI salvati nel browser.
+- Endpoint del Worker AI protetto con chiave operatore; lo stato può risultare pronto ma serve ancora verificare una generazione online autenticata.
+- La scena fotografica precedente è disponibile solo come fallback con `?legacy=1`.
 
-- La scena è **2.5D**, non un modello 3D navigabile né un'immagine dell'intera applicazione.
-- Gli agenti AI **non eseguono ancora** gli incarichi; il backend originale Python di OneManCompany non è connesso.
-- Telegram, login e cloud database sono da integrare. Il Worker di prova è in `../cloudflare/`.
-- Non c'è un piano Pro da acquistare per questa anteprima; la versione attuale non invia dati a servizi AI.
+## Test e aggiornamenti
 
-## File di progetto
+- `node --test ai-office/studio.test.mjs ai-office/movement.test.mjs`
+- `node ai-office/browser.test.mjs` — funzioni precedenti in fallback legacy.
+- `node ai-office/real3d.test.mjs` — scena geometrica, quattro GLB, sedia/bacino e mobile.
+- Workflow GitHub Actions **AI Office Studio UI** e **AI Office Cloudflare Deploy**. Il secondo controlla che il file `/preview-version.json` corrisponda al commit frontend effettivamente pubblicato.
 
-- `index.html`: navigazione e schede del prodotto.
-- `style.css`: tema originale e scena premium responsiva.
-- `app.js`: gestione locale di organico, incarichi e interazioni.
-- `penthouse.js`: segnaposto degli agenti sopra la scena, sincronizzati con `app.js`.
-- `assets/penthouse-hero.webp`: asset visivo approvato.
-- `office3d.js`: vecchio esperimento 3D, **non importato nella pagina**.
-- `browser.test.mjs`, `studio.test.mjs`: verifiche del prodotto.
+## Limitazioni ancora aperte
 
-Per verificare: `node --check ai-office/app.js` e
-`node ai-office/browser.test.mjs` (richiede Chromium e Playwright).
+Gli avatar hanno movimento a clip GLB e postura seduta procedurale, ma i percorsi non hanno ancora navmesh/collisioni complete; digitazione, IK delle mani, realismo della seduta e dettaglio dei modelli richiedono ulteriore rifinitura. La persistenza resta principalmente `localStorage`, senza login/sincronizzazione cloud. Il runtime Python originale non è collegato al Worker; il modello AI produce soltanto bozze su richiesta quando l'inferenza reale risulta disponibile.
+
+Leggere `SPRINT_STATUS.md` per avanzamento dettagliato e criteri di collaudo. **Non dichiarare completo il progetto soltanto perché i test PASS.**
