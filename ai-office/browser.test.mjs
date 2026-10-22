@@ -293,6 +293,11 @@ try {
   await page.setViewportSize({width:390,height:844});
   await page.waitForTimeout(300);
   assert.ok(await page.locator('[data-page="people"]').isVisible());
+  await page.locator('[data-page="collab"]').click();
+  assert.equal(await page.locator('[data-view="collab"].active').count(),1);
+  const boardSizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
+  assert.ok(boardSizes.scroll<=boardSizes.viewport+2,"Horizontal overflow in collaboration page: "+JSON.stringify(boardSizes));
+  await page.locator('[data-page="office"]').click();
   const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
   await page.goto("http://127.0.0.1:"+port+"/#office",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
