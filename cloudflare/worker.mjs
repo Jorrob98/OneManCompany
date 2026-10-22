@@ -117,8 +117,12 @@ async function aiAPI(request, env, url) {
     return new Response(null,{status:204,headers:{...RESPONSE_HEADERS,...headers}});
   if (url.pathname==="/api/ai/status") {
     if(request.method!=="GET")return json({ok:false,error:"method_not_allowed"},405,headers);
+    const aiAvailable=typeof env.AI?.run==="function";
+    const operatorKeyValid=typeof env.AI_OFFICE_API_KEY==="string" &&
+      env.AI_OFFICE_API_KEY.length>=24 && env.AI_OFFICE_API_KEY.length<=200;
     return json({ok:true,service:"ai-office",version:"sprint-06",
-      ready:Boolean(env.AI?.run && env.AI_OFFICE_API_KEY?.length >= 24),
+      ready:aiAvailable&&operatorKeyValid,
+      setupIssue:!aiAvailable?"ai_binding_unavailable":!operatorKeyValid?"operator_secret_missing_or_short":null,
       engine:"cloudflare-workers-ai",onemancompany_runtime:"not-connected"},200,headers);
   }
   if (url.pathname!=="/api/ai/generate") return json({ok:false,error:"not_found"},404,headers);
