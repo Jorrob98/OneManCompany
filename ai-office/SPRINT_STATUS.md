@@ -127,6 +127,15 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 - **Limite operativo del runner:** il test automatico `POST /api/ai/generate` non autenticato è filtrato da Cloudflare con HTTP 403 `error code: 1010` prima dell'API. Non disattivare i filtri Cloudflare per aggirare il blocco; eseguire la prova reale da browser umano autorizzato dopo la configurazione.
 - **Stato Sprint 06: DEPLOY PASS, CONFIGURAZIONE/INFERENZA LIVE BLOCCATE.** Non avviare lo Sprint 07 prima del completamento.
 
+### Correzione credenziali — 22/10/2026, richiesta dell'operatore
+
+- **Codice aggiornato realmente** in `cloudflare/worker.mjs`, `ai-office/ai-engine.js`, `cloudflare/worker.test.mjs` e `cloudflare/README.md`: `AI_OFFICE_API_KEY` ora accetta **8–200 caratteri ASCII stampabili, senza spazi**, inclusi simboli come `*`, `!`, `#`. Sono supportati i valori brevi da **8 a 10 caratteri**, preservando le chiavi più lunghe già presenti.
+- **Autenticazione conservata:** chiave cifrata solo su Cloudflare, invio `Authorization: Bearer`, verifica SHA-256 a confronto costante, allowlist origini, segreto solo in memoria nella pagina. Nessuna credenziale inserita in GitHub.
+- **Test aggiunti:** chiavi esemplificative da 8 e 10 caratteri con simboli, password errata rifiutata, invocazione `env.AI.run` soltanto dopo autorizzazione, rifiuto di valori sotto gli 8 caratteri, spazi, caratteri di controllo e lunghezze fuori limite. Sono test con AI simulata, non inferenza Cloudflare online.
+- **Sicurezza:** una password da 8–10 caratteri è meno resistente ai tentativi di indovinare rispetto a una lunga chiave casuale. Non disattivare protezioni Cloudflare; valutare protezione rate-limit a livello edge.
+- **Verifiche:** GitHub Actions `AI Office Cloudflare Tests` #151 PASS e successivo run sul commit finale; `AI Office Studio UI` #266 PASS (desktop/mobile).
+- **Pubblicazione:** workflow del Worker esistente `ai-office-api` #13, run `39798426669`. Lo Sprint 06 resta aperto finché `/api/ai/status` non mostra `ready=true` e una generazione online autorizzata non riesce.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
