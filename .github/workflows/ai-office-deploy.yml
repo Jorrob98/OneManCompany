@@ -22,14 +22,45 @@ jobs:
           node-version: "22"
       - name: Validate Worker behavior before deploy
         run: node --test cloudflare/worker.test.mjs
+      - name: Probe existing Worker publicly (read-only)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          base="https://ai-office-api.jorrob98.workers.dev"
+          for path in ("/health","/api/ai/status"):
+              url=base+path
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"AIO-sprint-6-health"}),timeout=12) as resp:
+                      code=resp.status
+                      raw=resp.read(4000).decode("utf-8","replace")
+                  try:
+                      obj=json.loads(raw)
+                      # Only nonsecret public status fields are printed.
+                      safe={k:obj.get(k) for k in ("service","status","version","ready","engine","onemancompany_runtime") if k in obj}
+                      summary=json.dumps(safe)
+                  except Exception:
+                      summary="not_json"
+                  print(f"LIVE {path}: HTTP {code}; {summary}")
+              except urllib.error.HTTPError as e:
+                  print(f"LIVE {path}: HTTP {e.code}; not ready")
+              except Exception as e:
+                  print(f"LIVE {path}: unreachable ({type(e).__name__})")
+          PY
       - name: Deploy only if Cloudflare credentials already exist
+        id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "NOT DEPLOYED: missing Cloudflare deployment credentials in GitHub Actions."
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=AI OFFICE deployment blocked::Cloudflare deployment secrets are absent; validated code but did not deploy."
+            echo "### AI OFFICE deployment: NOT DEPLOYED" >> "$GITHUB_STEP_SUMMARY"
+            echo "Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to GitHub Actions secrets, then run this workflow manually. Worker AI binding and operator key must also be configured." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           npx --yes wrangler@4 deploy --config cloudflare/wrangler.toml
-          echo "DEPLOY COMMAND COMPLETED: verify live Worker binding and secrets separately."
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          echo "### AI OFFICE Worker: deploy command succeeded" >> "$GITHUB_STEP_SUMMARY"
+          echo "A successful upload does NOT prove AI inference. Verify AI binding, allowed origin and operator key separately." >> "$GITHUB_STEP_SUMMARY"
