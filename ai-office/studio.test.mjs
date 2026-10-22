@@ -42,3 +42,17 @@ test("interface loads the approved premium office asset instead of the old 3D mo
   assert.match(html,/\.\/penthouse\.js/);
   assert.doesNotMatch(html,/src="\.\/office3d\.js"/);
 });
+
+test("Sprint 04 personnel administration is present and remains local",()=>{
+ for(const cmd of ["edit-personnel","promote","plan-leave","personnelForm","leaveForm","personnelDepartment"]){
+   assert.ok(js.includes(cmd),"Missing personnel feature: "+cmd);
+ }
+ for(const field of ["peopleSearch","peopleDepartment","peopleSummary"]){
+   assert.match(html,new RegExp('id="'+field+'"'));
+ }
+ assert.match(css,/personnel-skills-picker/);
+ assert.match(js,/assignedCount\(a\.id\)<3/);
+ assert.match(js,/reconcileLeave\(\)/);
+ assert.match(js,/data-action="edit-personnel"/);
+ assert.match(js,/getAll\("skills"\)/);
+});
