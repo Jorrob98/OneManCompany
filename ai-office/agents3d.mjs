@@ -605,6 +605,21 @@ info.command=(id,zone)=>{
   actor.manualUntil=performance.now()+30000;
   return moveToZone(actor,zone);
 };
+// Read-only rig diagnostics for visual QA: actual world-space joint contacts.
+info.rigDiagnostics=(id)=> {
+  const actor=stagePeople.get(id);
+  if(!actor)return null;
+  actor.body.updateMatrixWorld(true);
+  const sample=(kind)=>actor.poseBones[kind].map(b=>{
+    const p=b.getWorldPosition(new THREE.Vector3());
+    return {name:b.name,x:Number(p.x.toFixed(3)),y:Number(p.y.toFixed(3)),
+      z:Number(p.z.toFixed(3)),rotation:b.rotation.toArray().map(x=>Number(x.toFixed(2)))};
+  });
+  return {height:actor.avatarHeight,point:actor.point,
+    seatedWeight:actor.seatedWeight,
+    hips:actor.body.position.y,
+    thighs:sample("thigh"),calves:sample("calf"),arms:sample("arm"),forearms:sample("forearm")};
+};
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
   sessionMeeting:!!a.sessionMeeting,sessionSpeaker:!!a.sessionSpeaker,
