@@ -320,6 +320,24 @@ function person(a,index){
    else if(/forearm|lowerarm/.test(n))limbs.forearm.push(obj);
    else if(/upperarm/.test(n))limbs.arm.push(obj);
  });
+ // Runtime GLB skeletons can extend far beyond the bind-pose bounding box.
+ // Calibrate using the ACTUAL animated hip-to-ankle distance, in this same 3D
+ // room. This prevents 5.9m-high hips hovering over .79m-high chairs.
+ mixer.update(.016);
+ body.updateMatrixWorld(true);
+ const meanY=(bones)=>bones.reduce((v,b)=>v+b.getWorldPosition(new THREE.Vector3()).y,0)/Math.max(1,bones.length);
+ if(limbs.thigh.length>=2&&limbs.foot.length>=2){
+   const measuredLeg=meanY(limbs.thigh)-meanY(limbs.foot);
+   if(measuredLeg>.12 && Number.isFinite(measuredLeg)){
+     const correction=THREE.MathUtils.clamp(.84/measuredLeg,.08,8);
+     body.scale.multiplyScalar(correction);
+     body.position.y*=correction;
+     body.updateMatrixWorld(true);
+   }
+   const sole=meanY(limbs.foot);
+   body.position.y+=.06-sole;
+   body.updateMatrixWorld(true);
+ }
  const tag=textureDraw(340,85,(c)=>{
    c.fillStyle="#23434c";c.fillRect(0,0,340,85);
    c.font="bold 30px Arial";c.fillStyle="white";c.textAlign="center";
