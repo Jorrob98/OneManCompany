@@ -178,6 +178,17 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 
 **Pubblicazione:** da questo punto in avanti, riportare sempre preview Cloudflare, commit GitHub, risultati CI ed esito screenshot; non confondere PASS tecnico con verifica estetica.
 
+### 22/10/2026 — Correzione strutturale reale della scena 3D (baseline nuova pubblicata)
+
+- **Sorgenti effettivi:** `ai-office/office-real3d.mjs` riusa l'architettura di `office3d.js`, collegata da `ai-office/index.html`; la fotografia `penthouse-living-v3.webp` rimane solo nel fallback `?legacy=1`. Mantiene gestione dipendenti, incarichi e Worker esistenti.
+- **Modelli:** quattro esseri umani riggati GLB e reali modelli geometrici di pavimento/sedie/scrivanie condividono lo **stesso spazio Three.js**. Niente grandi blocchi proxy sopra una fotografia. Il modello è scalato usando la distanza reale fra giunture anca/caviglia rilevate dopo il binding del clip GLB.
+- **Verifica originale fallita correttamente:** `real3d.test.mjs` ha misurato anche a quota ~5.9 contro seduta .79; il deploy è stato **bloccato** dal gate browser. Dopo il corretto dimensionamento scheletrico, il test di allineamento bacino/sedia è **PASS**.
+- **Camera:** tre modalità (panoramica / postazioni / dipendente), orbit via puntatore, zoom e adattamento responsivo con focus sugli agenti su mobile. Semplificata la luce e riciclata la geometria della vecchia stanza; animazioni GLB idle/walk ora si sfumano durante i movimenti.
+- **Test CI e screenshot reali:** GitHub Actions `AI Office Studio UI` run `39817025652` **PASS**, inclusi vecchi flussi in fallback e nuova scena fisica su Chrome desktop/mobile. Screenshot `office-real3d-scene.png`, `office-real3d-mobile.png` e `office-real3d-desktop.png` scaricati e ispezionati. La scena è decisamente meno lussuosa e gli omini sono seduti, ma risultano ancora piccoli nella panoramica completa.
+- **Pubblicazione verificata:** `AI Office Cloudflare Deploy` run `39817025702` **PASS**, frontend dal Worker già esistente `https://ai-office-api.jorrob98.workers.dev/`, commit live **`17fb264fc2281e0dc586973fe858061fafc12f9f`**, controllato su `/preview-version.json`. Nessun nuovo Worker o progetto.
+- **Limitazioni residue reali:** percorso degli avatar verso altre aree non usa ancora navmesh/collisioni complete; digitazione/IK mani e transizione seduta/alzata richiedono ulteriore rifinitura; la preview mobile ha margini di miglioramento; il modello AI Worker è `ready=true` ma **inferenza reale autorizzata non verificata**; dati applicativi ancora soltanto browser e Telegram/sync cloud incompleti.
+- **Regola:** test PASS geometrico ≠ qualità visiva perfetta; non dichiarare progetto al 100%. Ogni aggiornamento deve includere link preview, SHA pubblicato e stato CI.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
