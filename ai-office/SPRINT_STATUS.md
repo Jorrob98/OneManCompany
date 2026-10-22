@@ -60,11 +60,28 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 
 **Limite dichiarato:** la navigazione è vincolata a corsie mappate manualmente nell'illustrazione. Il rilevamento tra dipendenti è approssimato; non esiste una mappa fisica 3D di collisione o una simulazione di folla, e non è connessa alcuna AI operativa.
 
+## Sprint 04 — Gestione avanzata del personale (31–40) ✅ Implementato
+
+31. **Schede modificabili:** nome, professione, reparto, livello e competenze per ogni agente attivo.
+32. **Reparti organizzativi:** otto reparti coerenti con le professioni, con assegnazione automatica alla prima assunzione.
+33. **Competenze strutturate:** selezione di massimo cinque competenze da un catalogo controllato, visibili nelle schede.
+34. **Livelli di carriera:** Junior, Intermedio, Senior, Lead con ordinamento e memorizzazione.
+35. **Promozioni:** avanzamento di livello con blocco a Lead e voce nello storico attività.
+36. **Ferie programmate:** intervallo validato, applicato al riavvio/apertura dello studio e rientro dopo la data di fine.
+37. **Capacità degli agenti:** fino a tre bozze di incarico assegnate per dipendente, senza pretendere che siano eseguite.
+38. **Ricerca dell'organico:** ricerca per nome, professione, reparto, livello e competenze.
+39. **Filtri e contatori:** filtro per reparto affiancato agli stati esistenti e conteggio dei risultati/disponibili.
+40. **Persistenza e storico:** migrazione compatibile dei profili esistenti in localStorage, modifiche e promozioni tracciate, archivio pensionati conservato e incarichi non eseguiti rimessi da assegnare.
+
+**Verifiche:** test automatici `studio.test.mjs` e `browser.test.mjs` estesi per scheda, promozione, ferie, ricerca, reparti e persistenza su desktop/mobile. La scena premium GLB è invariata. Il gate GitHub Actions va verificato sul commit finale dello sprint.
+
+**Limiti dichiarati:** gestione personale esclusivamente locale (nessun cloud o sync); ferie future attivate quando il browser esegue la pagina, non da server; carico basato su bozze assegnate, non su produttività AI reale. I quattro slot 3D simultanei restano invariati.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
 - [x] 03 — Percorsi intelligenti: collisioni approssimate tra agenti, assegnazione postazioni, entrate/uscite, routine
-- [ ] 04 — Gestione del personale: ruoli, competenze, reparti, ferie e promozioni
+- [x] 04 — Gestione del personale: ruoli, competenze, reparti, ferie e promozioni
 - [ ] 05 — Interazioni tra agenti: riunioni, collaborazione, scambi verificabili
 - [ ] 06 — Motore AI realmente operativo, strumenti, verifiche e autorizzazioni
 - [ ] 07 — Incarichi completi: assegnazione, stato reale, output, errori e audit
