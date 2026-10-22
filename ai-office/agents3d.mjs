@@ -80,7 +80,8 @@ try {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.25;
   renderer.setClearColor(0x000000,0);
-  renderer.localClippingEnabled=true;
+  // Never clip animated limbs: the previous seated mask hid half of each GLB.
+  renderer.localClippingEnabled=false;
   renderer.domElement.className="office-agent-canvas";
   renderer.domElement.setAttribute("aria-hidden","true");
   surface.appendChild(renderer.domElement);
@@ -169,6 +170,30 @@ function nameButton(a, actor){
   pickLayer.appendChild(button);
   actor.hit=button;
 }
+function createDeskChair(position) {
+  // Actual 3D furniture, fixed at the workstation instead of moving with an actor.
+  // All dimensions use the avatar's world coordinate scale (roughly 0.9 units tall).
+  const chair=new THREE.Group();
+  const upholstery=new THREE.MeshStandardMaterial({color:0x526272,roughness:.88,metalness:.04});
+  const base=new THREE.MeshStandardMaterial({color:0x47515c,roughness:.65,metalness:.18});
+  const add=(geometry,material,x,y,z)=>{
+    const mesh=new THREE.Mesh(geometry,material);
+    mesh.position.set(x,y,z);
+    chair.add(mesh);
+    return mesh;
+  };
+  add(new THREE.BoxGeometry(.50,.068,.30),upholstery,0,.25,-.13);
+  add(new THREE.BoxGeometry(.47,.46,.065),upholstery,0,.52,-.28);
+  add(new THREE.CylinderGeometry(.025,.025,.22,10),base,0,.12,-.13);
+  add(new THREE.BoxGeometry(.39,.04,.045),base,0,.045,-.13);
+  for(const side of [-1,1]){
+    add(new THREE.BoxGeometry(.045,.025,.24),base,side*.17,.04,-.13);
+  }
+  chair.position.copy(place(position));
+  chair.position.z=-.28; // Backrest remains behind the rig, not in front of its legs.
+  world.add(chair);
+  return chair;
+}
 function build(a,index) {
   const style=safeStyle(a.modelStyle,index);
   const sex=style.startsWith("f")?"female":"male";
@@ -186,22 +211,12 @@ function build(a,index) {
   holder.position.copy(position);
   // GLB skin rest-pose bounding boxes under-report actual animated extent:
   // calibrate against the photographed 2.5D office (not a full-world 3D camera).
-  const factor=0.36*(sex==="female"?1.45:1.50)*[1,.96,.85,.82][index]/safeHeight;
+  const factor=.65*(sex==="female"?1.45:1.50)*[1,.96,.92,.90][index]/safeHeight;
+  const avatarHeight=safeHeight*factor;
   body.scale.setScalar(factor);
-  // In a 2.5D office the furniture is photographed, not true 3D geometry.
-  // Clip just the lower part of a seated worker at the desk plane so chairs
-  // and consoles visually occlude the legs; restore full body before walking.
-  const seatOcclusion=new THREE.Plane(new THREE.Vector3(0,1,0),100);
-  body.traverse(node=>{
-    if(!node.isMesh || !node.material)return;
-    const decorate=m=>{
-      const out=m.clone();
-      out.clippingPlanes=[seatOcclusion];
-      out.clipShadows=true;
-      return out;
-    };
-    node.material=Array.isArray(node.material)?node.material.map(decorate):decorate(node.material);
-  });
+  // Remove the photographic desk-plane clip: it previously erased legs when
+  // the seated body was lowered by almost its entire visible height.
+  const deskChair=createDeskChair(workstation.desk);
   const shade=shadow();holder.add(shade);
   world.add(holder);
   const mixer=new THREE.AnimationMixer(body);
@@ -220,7 +235,8 @@ function build(a,index) {
     motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
     handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
-    restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,seatOcclusion,
+    restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,
+    chair:deskChair,avatarHeight,seatDrop:0,
     typingActive:false,arrivedCount:0,activity:"Ingresso",normalScale:factor,contactShadow:shade,depthScale:1};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
   body.traverse(node=>{
@@ -326,6 +342,12 @@ function removeActor(actor){
   actor.hit?.remove();
   actor.mixer.stopAllAction();
   world.remove(actor.holder);
+  if(actor.chair){
+    world.remove(actor.chair);
+    actor.chair.traverse(o=>{
+      if(o.isMesh){o.geometry.dispose();o.material.dispose();}
+    });
+  }
   actor.accent.geometry.dispose();
   actor.accent.material.dispose();
   actor.body.traverse(o=>{
@@ -406,8 +428,10 @@ function seatedPose(actor,delta,time){
   const target=actor.point==="desk"&&actor.state!=="walk"&&!actor.closing?1:0;
   actor.seatedWeight=THREE.MathUtils.damp(actor.seatedWeight,target,5.2,delta);
   const weight=actor.seatedWeight;
-  // Actual hips lower as legs bend; body is still parented to its walking anchor.
-  actor.body.position.y=actor.baseBodyY-.50*weight;
+  // The former hard-coded .50 displacement was approximately a whole avatar
+  // height. Keep the pelvis near the true 3D chair's seat, with smooth blending.
+  actor.seatDrop=actor.avatarHeight*.19*weight;
+  actor.body.position.y=actor.baseBodyY-actor.seatDrop;
   // Seated shoulders/head must actually drop to monitor height in this
   // orthographic 2.5D composition, not hover above the workstation.
   // Perspective-correct 2.5D sizing: smaller by the window, larger near camera.
@@ -415,10 +439,10 @@ function seatedPose(actor,delta,time){
   const distanceFactor=THREE.MathUtils.clamp(.85+yy*.00225,.93,1.06);
   actor.depthScale=distanceFactor;
   const scalar=actor.normalScale*distanceFactor;
-  actor.body.scale.set(scalar,scalar*(1-.14*weight),scalar);
+  // Never squash the whole character by 14% to imitate sitting.
+  actor.body.scale.set(scalar,scalar*(1-.025*weight),scalar);
   actor.contactShadow.scale.setScalar(THREE.MathUtils.clamp(distanceFactor,.93,1.06));
   actor.contactShadow.material.opacity=(actor.state==="walk"?.70:.82)*(1-.10*weight);
-  actor.seatOcclusion.constant=10*(1-weight)-(.10+(.04*actor.index))*weight;
   if(weight<.005)return;
   const signing=(key,angle,axis=xAxis)=>{
     const nodes=actor.poseBones[key];
@@ -536,7 +560,7 @@ function animateActor(actor,delta,time){
   }
   if(actor.hit){
     const projected=actor.holder.position.clone();
-    projected.y+=.76-.34*actor.seatedWeight;
+    projected.y+=actor.avatarHeight+.13-actor.seatDrop;
     projected.project(camera);
     actor.hit.style.left=(projected.x*.5+.5)*100+"%";
     actor.hit.style.top=(-projected.y*.5+.5)*100+"%";
@@ -585,6 +609,9 @@ info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   depthScale:Number(a.depthScale.toFixed(3)),shadowOpacity:Number(a.contactShadow.material.opacity.toFixed(2)),
   posture:a.seatedWeight>.75?"sitting":a.seatedWeight>.08?"transition":"standing",
   sittingBlend:Number(a.seatedWeight.toFixed(3)),typing:a.typingActive,
+  avatarHeight:Number(a.avatarHeight.toFixed(3)),
+  seatDrop:Number(a.seatDrop.toFixed(3)),
+  chairVisible:Boolean(a.chair?.parent),clipEnabled:false,
   rigLegs:a.poseBones.thigh.length+a.poseBones.calf.length,
   activity:a.point==="desk"?"Al computer":a.point==="meeting"?"Riunione":a.point==="lounge"?"Pausa":"Ingresso",
   routeSegments:a.path.length,arrivals:a.arrivedCount,
