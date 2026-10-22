@@ -147,6 +147,17 @@ try {
   assert.equal(seated.posture,"sitting","Worker did not transition into a chair posture");
   assert.ok(seated.sittingBlend>.75,"Seated pose did not finish blending");
   assert.ok(seated.rigLegs>=2,"Leg bones were not detected on the real rigged model");
+  // Physical visibility invariants: no more subtracting almost an entire avatar
+  // height or hiding legs under an image cutout when the employee sits.
+  assert.ok(seated.avatarHeight>.70&&seated.avatarHeight<1.2,
+    "Human GLB has implausible viewport size: "+JSON.stringify(seated));
+  assert.ok(seated.seatDrop>0&&seated.seatDrop<seated.avatarHeight*.24,
+    "Sitting lowered the character beyond the real chair's seat");
+  assert.equal(seated.clipEnabled,false,"Seated GLB is still clipping its own legs");
+  assert.equal(seated.chairVisible,true,"Seated employee has no actual 3D chair");
+  assert.equal(await page.locator(".aio-furniture-occlusion").evaluate(
+    el=>getComputedStyle(el).display),"none",
+    "Photographic furniture is hiding the GLB legs");
   assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/Seduto/);
   await page.screenshot({path:"ai-office/office-seated-desktop.png"});
   await page.locator("#penthouseStage").screenshot({path:"ai-office/office-seated-scene.png"});
