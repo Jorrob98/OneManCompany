@@ -62,6 +62,112 @@ async function aiReply(env, question) {
   }
 }
 
+
+/* Sprint 06: manual, authenticated text generation only.
+ * Never expose a secret or invoke user-supplied tools.
+ * The presence of a binding does not prove a successful inference. */
+const OUTPUT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const RESPONSE_HEADERS = {
+  "cache-control": "no-store",
+  "x-content-type-options": "nosniff",
+  "content-security-policy": "default-src 'none'"
+};
+function json(body, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(body), {
+    status, headers: { "content-type": "application/json; charset=utf-8",
+      ...RESPONSE_HEADERS, ...extraHeaders }
+  });
+}
+function allowedOrigin(request, env) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return { allowed: true, headers: {} };
+  let originURL;
+  try { originURL = new URL(origin); } catch { return { allowed: false, headers: {} }; }
+  if (originURL.protocol !== "https:" &&
+      !(originURL.protocol === "http:" && ["localhost","127.0.0.1"].includes(originURL.hostname))) {
+    return { allowed: false, headers: {} };
+  }
+  const list = String(env.AI_OFFICE_ALLOWED_ORIGINS || "").split(",")
+    .map(v => v.trim()).filter(Boolean);
+  if (!list.includes(origin)) return { allowed: false, headers: {} };
+  return { allowed: true, headers: {
+    "access-control-allow-origin": origin, "vary": "Origin",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "authorization, content-type",
+    "access-control-max-age": "600"
+  }};
+}
+async function keyIsValid(header, expected) {
+  if (typeof expected !== "string" || expected.length < 24 || expected.length > 200) return false;
+  const token = /^Bearer ([A-Za-z0-9_-]{24,200})$/.exec(header || "")?.[1];
+  if (!token || !crypto?.subtle) return false;
+  const encode = value => new TextEncoder().encode(value);
+  const [given, actual] = await Promise.all([crypto.subtle.digest("SHA-256", encode(token)),
+    crypto.subtle.digest("SHA-256", encode(expected))]);
+  const a = new Uint8Array(given), b = new Uint8Array(actual);
+  let mismatch = 0;
+  for (let i=0;i<a.length;i++) mismatch |= a[i] ^ b[i];
+  return mismatch === 0;
+}
+async function aiAPI(request, env, url) {
+  const cors = allowedOrigin(request, env);
+  if (!cors.allowed) return json({ ok:false, error:"origin_not_allowed" },403);
+  const headers = cors.headers;
+  if (request.method==="OPTIONS")
+    return new Response(null,{status:204,headers:{...RESPONSE_HEADERS,...headers}});
+  if (url.pathname==="/api/ai/status") {
+    if(request.method!=="GET")return json({ok:false,error:"method_not_allowed"},405,headers);
+    return json({ok:true,service:"ai-office",version:"sprint-06",
+      ready:Boolean(env.AI?.run && env.AI_OFFICE_API_KEY?.length >= 24),
+      engine:"cloudflare-workers-ai",onemancompany_runtime:"not-connected"},200,headers);
+  }
+  if (url.pathname!=="/api/ai/generate") return json({ok:false,error:"not_found"},404,headers);
+  if (request.method!=="POST")return json({ok:false,error:"method_not_allowed"},405,headers);
+  if (!env.AI?.run)return json({ok:false,error:"ai_binding_unavailable"},503,headers);
+  if (!env.AI_OFFICE_API_KEY)return json({ok:false,error:"operator_key_not_configured"},503,headers);
+  if (!(await keyIsValid(request.headers.get("Authorization"), env.AI_OFFICE_API_KEY)))
+    return json({ok:false,error:"unauthorized"},401,headers);
+  if (!String(request.headers.get("content-type")||"").toLowerCase().startsWith("application/json"))
+    return json({ok:false,error:"json_required"},415,headers);
+  const raw=await request.text();
+  if(raw.length > 4096)return json({ok:false,error:"payload_too_large"},413,headers);
+  let body;
+  try {body=JSON.parse(raw);}catch{return json({ok:false,error:"invalid_json"},400,headers);}
+  const title=typeof body?.title==="string"?body.title.trim():"";
+  const details=typeof body?.details==="string"?body.details.trim():"";
+  const role=typeof body?.role==="string"?body.role.trim():"";
+  const instructions=typeof body?.instructions==="string"?body.instructions.trim():"";
+  if (!title || title.length>75 || details.length>450 || role.length>55 ||
+      instructions.length>300 || typeof body!=="object" || Array.isArray(body))
+    return json({ok:false,error:"invalid_input"},422,headers);
+  const prompt=[
+    "Titolo: "+title,"Descrizione: "+details,
+    "Figura professionale: "+role,"Indicazioni aggiuntive: "+instructions
+  ].join("\n");
+  const started=Date.now();
+  let result;
+  try {
+    result=await env.AI.run(OUTPUT_MODEL,{
+      messages:[
+        {role:"system",content:"Sei AI OFFICE, assistente di generazione testuale professionale in italiano. " +
+        "Produci solo una bozza utile in testo semplice per la richiesta. " +
+        "Non affermare di aver eseguito azioni esterne, navigato sul web, letto dati non forniti, " +
+        "inviato messaggi, verificato fatti recenti o completato incarichi reali. " +
+        "Se mancano dati, indica ipotesi e limiti. Nessun tool disponibile."},
+        {role:"user",content:prompt}],
+      max_tokens:600,temperature:0.35
+    });
+  } catch {
+    return json({ok:false,error:"inference_failed",retryable:true},502,headers);
+  }
+  const output=typeof result?.response==="string"?result.response.trim():"";
+  if(!output)return json({ok:false,error:"empty_model_response",retryable:true},502,headers);
+  return json({ok:true,kind:"text-draft",output:output.slice(0,6000),
+    model:OUTPUT_MODEL,producedAt:new Date().toISOString(),
+    requestId:crypto.randomUUID(),elapsedMs:Date.now()-started,
+    onemancompany_runtime:"not-connected",requiresReview:true},200,headers);
+}
+
 async function handleUpdate(env, update) {
   const message = update?.message;
   if (!message || !message.from || !message.chat || message.chat.type !== "private") return;
@@ -112,6 +218,8 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    if (url.pathname.startsWith("/api/ai/")) return aiAPI(request, env, url);
+
     if (url.pathname === "/health" && request.method === "GET") {
       return new Response(JSON.stringify({
         service: "ai-office",
@@ -152,4 +260,4 @@ export default {
   }
 };
 
-export { configured, handleUpdate };
+export { configured, handleUpdate, aiAPI, keyIsValid, allowedOrigin };
