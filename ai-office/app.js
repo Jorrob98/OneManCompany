@@ -6,6 +6,16 @@ const KEY="ai-office-studio-v1",MAX=8;
 const stations=[[2.45,3.25],[6.75,2.95],[3.65,6.75],[7.95,6.35],[9.15,3.7],[1.3,6.35],[9.3,7.7],[5.7,4.9]];
 const roles=["Programmatore","Designer","Ricercatore","Revisore QA","Coordinatore","Automazioni","Analista","Comunicazione"];
 const colors=["coral","mint","lavender","blue","gold"];
+// Sprint 04: all personnel records are local prototype data, never AI activity.
+const departments=["Direzione","Tecnologia","Design","Ricerca","Qualità","Operazioni","Analisi","Marketing"];
+const levels=["Junior","Intermedio","Senior","Lead"];
+const skillCatalog=["Programmazione","Design UI","Ricerca","Test QA","Coordinamento","Automazioni","Dati","Comunicazione"];
+const departmentFor=role=>({"Programmatore":"Tecnologia","Designer":"Design","Ricercatore":"Ricerca","Revisore QA":"Qualità","Coordinatore":"Direzione","Automazioni":"Operazioni","Analista":"Analisi","Comunicazione":"Marketing"})[role]||"Operazioni";
+const skillsFor=role=>({"Programmatore":["Programmazione"],"Designer":["Design UI"],"Ricercatore":["Ricerca"],"Revisore QA":["Test QA"],"Coordinatore":["Coordinamento"],"Automazioni":["Automazioni"],"Analista":["Dati"],"Comunicazione":["Comunicazione"]})[role]||[];
+const validDate=value=>typeof value==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value+"T12:00:00"));
+const todayLocal=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");};
+const options=(values,selected)=>values.map(v=>'<option value="'+esc(v)+'" '+(v===selected?"selected":"")+'>'+esc(v)+'</option>').join("");
+
 // Eight genuinely different licensed GLB human models, not two repeated costumes.
 const characterStyles=[
  ["f1","Donna · Executive 1"],["f2","Donna · Executive 2"],
@@ -34,7 +44,12 @@ function load(){
         id:String(a.id).slice(0,55),name:String(a.name).slice(0,30),role:String(a.role).slice(0,35),
         status:["available","vacation","retired"].includes(a.status)?a.status:"available",
         avatar:String(a.avatar||"🧑‍💼").slice(0,12),color:colors.includes(a.color)?a.color:"blue",
-        modelStyle:validStyle(a.modelStyle)?a.modelStyle:(a.id==="a1"?"f1":a.id==="a3"?"f2":a.id==="a4"?"m2":"m1")
+        modelStyle:validStyle(a.modelStyle)?a.modelStyle:(a.id==="a1"?"f1":a.id==="a3"?"f2":a.id==="a4"?"m2":"m1"),
+        department:departments.includes(a.department)?a.department:departmentFor(a.role),
+        level:levels.includes(a.level)?a.level:"Junior",
+        skills:Array.isArray(a.skills)?[...new Set(a.skills.filter(v=>skillCatalog.includes(v)))].slice(0,5):skillsFor(a.role),
+        leaveStart:validDate(a.leaveStart)?a.leaveStart:"",
+        leaveEnd:validDate(a.leaveEnd)?a.leaveEnd:""
       })),
       tasks:data.tasks.slice(0,80).filter(t=>t&&typeof t.title==="string").map(t=>({
         id:String(t.id),title:String(t.title).slice(0,75),detail:String(t.detail||"").slice(0,450),
@@ -48,11 +63,21 @@ function load(){
   }catch{return initial();}
 }
 let state=load();
+function reconcileLeave(){
+ const today=todayLocal();
+ for(const a of state.agents){
+   if(a.status==="retired"||!a.leaveStart||!a.leaveEnd)continue;
+   if(today>=a.leaveStart&&today<=a.leaveEnd)a.status="vacation";
+   else if(today>a.leaveEnd){if(a.status==="vacation")a.status="available";a.leaveStart="";a.leaveEnd="";}
+ }
+}
+const assignedCount=id=>state.tasks.filter(t=>t.agent===id).length;
+reconcileLeave();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch{toast("Il browser non consente di salvare i dati.");}};
 let toastTimeout=0;
 function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove("show"),3200);}
 function activity(kind,message){state.events.unshift({id:String(Date.now())+Math.random(),kind,message,at:Date.now()});state.events=state.events.slice(0,80);}
-const statusLabel=a=>a.status==="vacation"?"In ferie":a.status==="retired"?"Pensionato":"Disponibile";
+const statusLabel=a=>a.status==="retired"?"Pensionato":a.status==="vacation"?"In ferie":a.leaveStart&&a.leaveStart>todayLocal()?"Ferie programmate":"Disponibile";
 const available=()=>state.agents.filter(a=>a.status==="available");
 const active=()=>state.agents.filter(a=>a.status!=="retired");
 const short=n=>String(n).padStart(2,"0");
@@ -69,6 +94,7 @@ function navigate(page){
   if(page==="office")requestAnimationFrame(()=>{resizeCanvas();window.dispatchEvent(new Event("studio:office-visible"));});
 }
 function renderAll(){
+  reconcileLeave();
   $("statEmployees").textContent=short(active().length);
   $("statAvailable").textContent=short(available().length);
   $("statTasks").textContent=short(state.tasks.length);
@@ -94,11 +120,16 @@ function renderFocus(){
     return;
   }
   panel.innerHTML='<div class="focus-eyebrow">PROFILO DIPENDENTE / '+esc(a.id.slice(-3).toUpperCase())+'</div>'+
-    '<div class="focus-avatar">'+esc(a.avatar)+'</div><h3>'+esc(a.name)+'</h3><p>'+esc(a.role)+'</p>'+
+    '<div class="focus-avatar">'+esc(a.avatar)+'</div><h3>'+esc(a.name)+'</h3><p>'+esc(a.role)+' · '+esc(a.department||departmentFor(a.role))+' · '+esc(a.level||"Junior")+'</p>'+
     '<span class="focus-status">'+(a.status==="vacation"?"☼ In ferie — fuori ufficio":"● Disponibile — nessuna esecuzione AI")+'</span>'+
     '<div class="focus-buttons"><button data-action="new-task" data-id="'+esc(a.id)+'">＋ Incarico</button>'+
     '<button data-action="vacation" data-id="'+esc(a.id)+'">'+(a.status==="vacation"?"↩ Richiama":"☀ Ferie")+'</button>'+
     '<button class="danger" data-action="retire" data-id="'+esc(a.id)+'">Pensiona</button></div>'+
+    '<div class="focus-buttons personnel-controls"><button data-action="edit-personnel" data-id="'+esc(a.id)+'">✎ Scheda</button>'+
+    '<button data-action="promote" data-id="'+esc(a.id)+'">↑ Promuovi</button>'+
+    '<button data-action="plan-leave" data-id="'+esc(a.id)+'">◷ Ferie</button></div>'+
+    '<p class="personnel-focus-meta">Competenze: '+esc((a.skills||skillsFor(a.role)).join(" · ")||"Da definire")+
+    ' · Incarichi in attesa: '+assignedCount(a.id)+'/3</p>'+
     '<button class="appearance-open" data-action="appearance" data-id="'+esc(a.id)+'">✦ Personalizza personaggio 3D</button>'+
     (a.status==="available"?'<div class="agent-director"><div class="focus-eyebrow">MOVIMENTI 3D · DEMO VISIVA</div>'+
     '<div class="focus-buttons"><button data-action="agent-desk" data-id="'+esc(a.id)+'">⌑ Scrivania</button>'+
@@ -107,12 +138,23 @@ function renderFocus(){
 }
 function renderPeople(){
   const filter=document.querySelector(".segment.active")?.dataset.filter||"all";
-  const people=state.agents.filter(a=>filter==="all"||a.status===filter);
+  const q=($("peopleSearch")?.value||"").trim().toLocaleLowerCase("it-IT");
+  const dept=$("peopleDepartment")?.value||"all";
+  const people=state.agents.filter(a=>(filter==="all"||a.status===filter)&&
+    (dept==="all"||a.department===dept)&&
+    (!q||[a.name,a.role,a.department,a.level,...(a.skills||[])].join(" ").toLocaleLowerCase("it-IT").includes(q)));
+  if($("peopleSummary"))$("peopleSummary").textContent=people.length+" profili · "+state.agents.filter(a=>a.status==="available").length+" disponibili";
   const grid=$("peopleGrid");
   grid.innerHTML=people.length?people.map(a=>'<article class="person-card">'+
     '<div class="persona-avatar">'+esc(a.avatar)+'</div><h3>'+esc(a.name)+'</h3><p class="job">'+esc(a.role)+'</p>'+
+    '<div class="personnel-meta">'+esc(a.department||departmentFor(a.role))+' · '+esc(a.level||"Junior")+'</div>'+
+    '<div class="personnel-skills">'+(a.skills||skillsFor(a.role)).map(v=>'<span>'+esc(v)+'</span>').join("")+'</div>'+
+    '<div class="personnel-load">Incarichi: '+assignedCount(a.id)+'/3'+(a.leaveStart&&a.status!=="retired"?' · Ferie '+esc(a.leaveStart)+" → "+esc(a.leaveEnd):"")+'</div>'+
     '<span class="state '+a.status+'">● '+statusLabel(a)+'</span>'+
     '<div class="card-actions"><button data-action="select" data-id="'+esc(a.id)+'">Visualizza</button>'+
+    (a.status!=="retired"?'<button data-action="edit-personnel" data-id="'+esc(a.id)+'">Modifica</button>'+
+     '<button data-action="promote" data-id="'+esc(a.id)+'">↑ Livello</button>'+
+     '<button data-action="plan-leave" data-id="'+esc(a.id)+'">Calendario</button>':"")+
     (a.status==="retired"?'<button data-action="reinstate" data-id="'+esc(a.id)+'">↩ Riassumi</button>':
      '<button data-action="vacation" data-id="'+esc(a.id)+'">'+(a.status==="vacation"?"Rientra":"Ferie")+'</button><button data-action="retire" data-id="'+esc(a.id)+'">Pensiona</button>')+
     '</div></article>').join(""):
@@ -151,6 +193,30 @@ function hire(){
  '<p class="modal-note">Il profilo apparirà realmente nella stanza animata e verrà salvato nel browser.</p>'+
  '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Assumi agente ↗</button></div></form>');
 }
+function editPersonnel(id){
+ const a=state.agents.find(v=>v.id===id);
+ if(!a||a.status==="retired")return;
+ openModal("Scheda · "+a.name,
+ '<p class="modal-text">Ruolo, reparto, competenze e livello sono dati organizzativi salvati solo nel browser.</p>'+
+ '<form id="personnelForm"><input type="hidden" name="agentId" value="'+esc(a.id)+'">'+
+ '<div class="field"><label for="personnelName">Nome</label><input id="personnelName" name="name" required maxlength="30" value="'+esc(a.name)+'"></div>'+
+ '<div class="field"><label for="personnelRole">Professione</label><select id="personnelRole" name="role">'+options(roles,a.role)+'</select></div>'+
+ '<div class="field"><label for="personnelDepartment">Reparto</label><select id="personnelDepartment" name="department">'+options(departments,a.department||departmentFor(a.role))+'</select></div>'+
+ '<div class="field"><label for="personnelLevel">Livello</label><select id="personnelLevel" name="level">'+options(levels,a.level||"Junior")+'</select></div>'+
+ '<fieldset class="personnel-fieldset"><legend>Competenze · massimo 5</legend><div class="personnel-skills-picker">'+skillCatalog.map(v=>
+ '<label><input type="checkbox" name="skills" value="'+esc(v)+'" '+((a.skills||[]).includes(v)?"checked":"")+'><span>'+esc(v)+'</span></label>').join("")+'</div></fieldset>'+
+ '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Salva profilo</button></div></form>');
+}
+function planLeave(id){
+ const a=state.agents.find(v=>v.id===id);
+ if(!a||a.status==="retired")return;
+ openModal("Ferie · "+a.name,
+ '<p class="modal-text">Le ferie future vengono applicate quando apri lo studio nel periodo indicato. Puoi interromperle con il pulsante Rientra.</p>'+
+ '<form id="leaveForm"><input type="hidden" name="agentId" value="'+esc(a.id)+'">'+
+ '<div class="field"><label for="leaveStart">Dal</label><input id="leaveStart" name="start" type="date" min="'+todayLocal()+'" required value="'+esc(a.leaveStart||todayLocal())+'"></div>'+
+ '<div class="field"><label for="leaveEnd">Al (compreso)</label><input id="leaveEnd" name="end" type="date" min="'+todayLocal()+'" required value="'+esc(a.leaveEnd||a.leaveStart||todayLocal())+'"></div>'+
+ '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Programma ferie</button></div></form>');
+}
 function appearance(id){
  const a=state.agents.find(v=>v.id===id);
  if(!a||a.status==="retired")return;
@@ -164,12 +230,12 @@ function appearance(id){
  '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Salva aspetto</button></div></form>');
 }
 function newTask(id){
- const people=state.agents.filter(a=>a.status==="available");
+ const people=state.agents.filter(a=>a.status==="available"&&assignedCount(a.id)<3);
  openModal("Diamo vita a un'idea.",
  '<p class="modal-text">Scrivi un incarico. Sarà registrato come <strong>in attesa</strong>, senza esecuzione AI finché non colleghiamo il motore.</p>'+
  '<form id="taskForm"><div class="field"><label for="taskTitle">Nome incarico</label><input id="taskTitle" name="title" required maxlength="75" placeholder="Es. Crea una landing page"></div>'+
  '<div class="field"><label for="taskDetail">Descrizione</label><textarea id="taskDetail" name="detail" maxlength="450" placeholder="Spiega cosa vorresti ottenere..."></textarea></div>'+
- '<div class="field"><label for="taskAgent">Assegna a</label><select id="taskAgent" name="agent"><option value="">Da assegnare</option>'+people.map(a=>'<option value="'+esc(a.id)+'" '+(id===a.id?"selected":"")+'>'+esc(a.name)+' · '+esc(a.role)+'</option>').join("")+'</select></div>'+
+ '<div class="field"><label for="taskAgent">Assegna a</label><select id="taskAgent" name="agent"><option value="">Da assegnare</option>'+people.map(a=>'<option value="'+esc(a.id)+'" '+(id===a.id?"selected":"")+'>'+esc(a.name)+' · '+esc(a.role)+' ('+assignedCount(a.id)+'/3)</option>').join("")+'</select></div>'+
  '<p class="modal-note">Gli incarichi sono bozze locali: non vengono inviati a Telegram e non consumano crediti AI.</p>'+
  '<div class="modal-actions"><button type="button" class="secondary-button" data-action="close">Annulla</button><button class="primary-button" type="submit">Salva incarico ↗</button></div></form>');
 }
@@ -191,6 +257,14 @@ function action(kind,id){
  if(kind==="close"){closeModal();return;}
  if(kind==="hire"){hire();return;}
  if(kind==="appearance"&&a){appearance(id);return;}
+ if(kind==="edit-personnel"&&a){editPersonnel(id);return;}
+ if(kind==="plan-leave"&&a){planLeave(id);return;}
+ if(kind==="promote"&&a&&a.status!=="retired"){
+   const level=levels.indexOf(a.level||"Junior");
+   if(level>=levels.length-1){toast("Il dipendente è già Lead.");return;}
+   const before=a.level||"Junior";a.level=levels[level+1];
+   activity("↑",a.name+" promosso: "+before+" → "+a.level+".");renderAll();toast(a.name+" promosso a "+a.level);return;
+ }
  if(kind==="new-task"){newTask(id||state.selected);return;}
  if(["agent-desk","agent-meeting","agent-lounge"].includes(kind)){
    if(!a||a.status!=="available"){toast("Il dipendente non è disponibile.");return;}
@@ -205,7 +279,7 @@ function action(kind,id){
  }
  if(kind==="select"&&a){state.selected=a.id;navigate("office");renderAll();return;}
  if(kind==="vacation"&&a&&a.status!=="retired"){
-   a.status=a.status==="vacation"?"available":"vacation";
+   a.status=a.status==="vacation"?"available":"vacation";a.leaveStart="";a.leaveEnd="";
    activity(a.status==="vacation"?"☼":"↩",a.name+(a.status==="vacation"?" è stato messo in ferie.":" è tornato dalle ferie."));
    toast(a.status==="vacation"?"Ferie registrate.":"Dipendente nuovamente disponibile.");renderAll();return;
  }
@@ -214,11 +288,11 @@ function action(kind,id){
     '<div class="modal-actions"><button class="secondary-button" data-action="close">Annulla</button><button class="primary-button" data-action="confirm-retire" data-id="'+esc(a.id)+'">Conferma pensionamento</button></div>');return;
  }
  if(kind==="confirm-retire"&&a){
-   a.status="retired";state.selected=available()[0]?.id||"";
+   a.status="retired";a.leaveStart="";a.leaveEnd="";state.selected=available()[0]?.id||"";
    activity("▤",a.name+" è stato pensionato.");closeModal();renderAll();toast("Pensionamento registrato.");return;
  }
  if(kind==="reinstate"&&a&&a.status==="retired"){
-   a.status="available";state.selected=a.id;activity("✦",a.name+" è stato riassunto.");toast(a.name+" è di nuovo in ufficio.");renderAll();return;
+   a.status="available";a.leaveStart="";a.leaveEnd="";state.selected=a.id;activity("✦",a.name+" è stato riassunto.");toast(a.name+" è di nuovo in ufficio.");renderAll();return;
  }
  if(kind==="delete-task"){
    const t=state.tasks.find(e=>e.id===id);if(t){state.tasks=state.tasks.filter(e=>e.id!==id);activity("×","Incarico eliminato: "+t.title);renderAll();toast("Incarico eliminato.");}return;
@@ -238,10 +312,37 @@ $("modalShell").addEventListener("submit",event=>{
     const role=String(fd.get("role")),color=String(fd.get("color"));
     const emoji=({Programmatore:"👨‍💻",Designer:"👩‍🎨",Ricercatore:"🧑‍🔬","Revisore QA":"🧑‍🔬",Coordinatore:"👩‍💼",Automazioni:"🤖",Analista:"🧑‍💼",Comunicazione:"👩‍💻"})[role]||"🧑‍💼";
     const chosenStyle=String(fd.get("modelStyle")||"f1");
-    const agent={id:"a"+Date.now().toString(36),name:name.slice(0,30),role:roles.includes(role)?role:"Analista",color:colors.includes(color)?color:"blue",modelStyle:validStyle(chosenStyle)?chosenStyle:"f1",avatar:emoji,status:"available"};
+    const agent={id:"a"+Date.now().toString(36),name:name.slice(0,30),role:roles.includes(role)?role:"Analista",color:colors.includes(color)?color:"blue",modelStyle:validStyle(chosenStyle)?chosenStyle:"f1",avatar:emoji,status:"available",department:departmentFor(role),level:"Junior",skills:skillsFor(role),leaveStart:"",leaveEnd:""};
     state.agents.push(agent);state.selected=agent.id;
     activity("＋",agent.name+" è entrato nel team come "+agent.role+".");
     closeModal();renderAll();navigate("office");toast("Benvenuto nel team, "+agent.name+"!");
+  }
+  if(event.target.id==="personnelForm"){
+    event.preventDefault();const fd=new FormData(event.target);
+    const a=state.agents.find(v=>v.id===fd.get("agentId"));
+    if(!a||a.status==="retired")return;
+    const name=String(fd.get("name")||"").trim().slice(0,30);
+    const role=String(fd.get("role")||""),department=String(fd.get("department")||"");
+    const level=String(fd.get("level")||"");
+    const skills=[...new Set(fd.getAll("skills").map(String))];
+    if(!name||!roles.includes(role)||!departments.includes(department)||!levels.includes(level)||
+       skills.length>5||skills.some(v=>!skillCatalog.includes(v))){toast("Controlla nome, reparto e competenze (massimo 5).");return;}
+    a.name=name;a.role=role;a.department=department;a.level=level;a.skills=skills;
+    activity("✎","Profilo aggiornato: "+a.name+" · "+a.department+" · "+a.level);
+    closeModal();renderAll();toast("Scheda dipendente aggiornata.");return;
+  }
+  if(event.target.id==="leaveForm"){
+    event.preventDefault();const fd=new FormData(event.target);
+    const a=state.agents.find(v=>v.id===fd.get("agentId"));
+    const start=String(fd.get("start")||""),end=String(fd.get("end")||"");
+    if(!a||a.status==="retired"||!validDate(start)||!validDate(end)||start<todayLocal()||end<start){
+      toast("Intervallo ferie non valido.");return;
+    }
+    a.leaveStart=start;a.leaveEnd=end;
+    if(start<=todayLocal())a.status="vacation";
+    else a.status="available";
+    activity("☼","Ferie "+a.name+": "+start+" → "+end+".");
+    closeModal();renderAll();toast("Ferie registrate.");return;
   }
   if(event.target.id==="appearanceForm"){
     event.preventDefault();
@@ -260,11 +361,13 @@ $("modalShell").addEventListener("submit",event=>{
     event.preventDefault();const fd=new FormData(event.target),title=String(fd.get("title")||"").trim();
     if(!title)return;
     const assignment=String(fd.get("agent")||"");
-    const agent=available().some(a=>a.id===assignment)?assignment:"";
+    const agent=available().some(a=>a.id===assignment&&assignedCount(a.id)<3)?assignment:"";
     state.tasks.unshift({id:"t"+Date.now().toString(36),title:title.slice(0,75),detail:String(fd.get("detail")||"").trim().slice(0,450),agent,at:Date.now()});
     activity("◈","Incarico salvato in attesa: "+title.slice(0,75));closeModal();renderAll();navigate("tasks");toast("Incarico salvato, in attesa del motore AI.");
   }
 });
+document.addEventListener("input",e=>{if(e.target?.id==="peopleSearch")renderPeople();});
+document.addEventListener("change",e=>{if(e.target?.id==="peopleDepartment")renderPeople();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 $("infoBtn").addEventListener("click",info);
 $("aboutBtn").addEventListener("click",info);
