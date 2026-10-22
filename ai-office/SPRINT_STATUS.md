@@ -94,13 +94,32 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 
 **Limiti dichiarati:** tutti i dati restano in localStorage, senza identità/autorizzazioni server né messaggi AI. Il direttore è l'unico che inserisce decisioni o approva collaborazioni; la presenza/gestualità nella sala riunioni è una simulazione visiva 2.5D/GLB, non prova di discussione o lavoro reali. Avatar contemporanei: massimo quattro.
 
+## Sprint 06 — Motore AI verificabile (51–60) ⚠ Codice implementato, deploy Workers AI non confermato
+
+51. **Backend realmente generativo:** il Worker già presente espone `POST /api/ai/generate` e invoca `env.AI.run` con Llama 3.1 8B FP8; non ricostruisce il runtime Python originale.
+52. **Stato esplicito:** `GET /api/ai/status` distingue un Worker configurato da una semplice pagina raggiungibile.
+53. **Ruolo contestualizzato:** titolo, descrizione, ruolo professionale e indicazioni compongono la richiesta; i dati sono limitati.
+54. **Controllo dell'accesso:** chiave operatore privata, Bearer autenticato e origini HTTPS con CORS allowlist.
+55. **Avvio manuale:** nessuna chiamata AI parte in autonomia; l'utente preme Genera dalla scheda dell'incarico.
+56. **Nessun token salvato:** la chiave è tenuta soltanto in memoria della pagina ed eliminata dopo ogni ricaricamento.
+57. **Risultati reali separati:** solo una risposta riuscita di `env.AI.run` è esposta come *bozza AI generata*, mai come incarico eseguito.
+58. **Provenienza e audit:** modello, timestamp e identificativo richiesta accompagnano il testo generato, salvato soltanto in localStorage.
+59. **Gestione errori e limiti:** niente falsi successi in caso di quota esaurita, Worker assente, chiave errata o output vuoto; nessun tool esterno disponibile al modello.
+60. **Verifiche e rilascio controllato:** 11 test Worker, test UI/Chrome desktop-mobile, workflow GitHub Actions condizionato alle credenziali e preview statica. 
+
+**Esito test disponibili:** Worker `node --test cloudflare/worker.test.mjs` 11/11 PASS nel workflow `AI Office Cloudflare Deploy` del commit `415721c1`; UI browser PASS nel workflow del commit `1fb8a86e` (test di output con API simulata). Gli altri workflow dell'ultimo commit devono essere verificati prima della chiusura tecnica.
+
+**Blocco al deploy:** il workflow `AI Office Cloudflare Deploy` ha indicato esplicitamente `NOT DEPLOYED: missing Cloudflare deployment credentials in GitHub Actions.` Mancano/ non sono disponibili i secrets GitHub `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`. Sul Worker occorrono inoltre `AI_OFFICE_API_KEY`, `AI_OFFICE_ALLOWED_ORIGINS` e il binding Workers AI `AI`. Non dichiarare il motore raggiungibile/operativo finché una richiesta reale al Worker pubblicato non produce un risultato verificabile. Il gate grafico e l'anteprima statica non sostituiscono tale verifica.
+
+**Limiti consapevoli:** solo generazione di bozze testuali con revisione umana; nessuna esecuzione del runtime OneManCompany, navigazione, invio email o uso di tool. Questa fase NON avvia automaticamente lo Sprint 07.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
 - [x] 03 — Percorsi intelligenti: collisioni approssimate tra agenti, assegnazione postazioni, entrate/uscite, routine
 - [x] 04 — Gestione del personale: ruoli, competenze, reparti, ferie e promozioni
 - [x] 05 — Interazioni tra agenti: riunioni, collaborazione, scambi verificabili
-- [ ] 06 — Motore AI realmente operativo, strumenti, verifiche e autorizzazioni
+- [ ] 06 — Codice motore AI verificabile pronto; deploy Cloudflare ed inferenza reale online ancora da certificare
 - [ ] 07 — Incarichi completi: assegnazione, stato reale, output, errori e audit
 - [ ] 08 — Telegram, login, cloud, sincronizzazione e backup
 - [ ] 09 — Performance, qualità adattiva, sicurezza e affidabilità
