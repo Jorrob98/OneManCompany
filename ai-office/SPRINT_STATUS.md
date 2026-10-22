@@ -154,6 +154,30 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 
 **Non dichiarare progetto completo o 100%.** Le correzioni di visibilità sono integrate e testate; la seduta e l'ambiente richiedono ancora sviluppo e verifica visiva.
 
+### Audit urgente su screenshot utente e correzione regressione — 22/10/2026
+
+Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi e sovrapposti a sedie/scrivanie. Il test automatico precedente era un falso positivo di qualità visuale.
+
+**Diagnosi effettiva:**
+- Il modello 3D `agents3d.mjs` usa uno sfondo fotografico 2.5D e non condivide le coordinate fisiche degli arredi.
+- L'asset GLB corrente usa Biped con femore orientato lungo un asse diverso da quello assunto dal vecchio codice: ruotare l'asse locale X per un "sit" non sposta il ginocchio.
+- La prova con orientamento world-space del femore ha alzato davvero le ginocchia (diagnosi `rigDiagnostics`), ma non ha reso credibile la seduta sulla fotografia.
+- Una prova con sedie 3D sovrapposte ha prodotto **grandi schienali grigi**: prova bocciata dopo ispezione screenshot; la regressione è stata rimossa.
+- Il catalogo remoto contiene clip di idle/walk/talk ma non un clip di seduta dedicato: non è corretto dichiarare una seduta reale senza riprogettare la scena.
+
+**Correzione di contenimento PUBBLICATA, ma NON risoluzione della seduta:**
+- `agents3d.mjs`: rimossi i blocchi sedia 3D, disabilitata la posa seduta non verificata in assenza di clip reale, etichette corrette in "Alla postazione · demo" anziché "Seduto", personaggi integri.
+- `movement.mjs`: punti di sosta portati sui corridoi davanti alle postazioni, evitando avatar appoggiati visivamente ai piani delle scrivanie.
+- `browser.test.mjs`: test negativi contro falsa etichetta "seduto", sedie grigie artificiali, gambe troncate e ancoraggi al piano sbagliato.
+- **Test UI Chrome desktop/mobile:** PASS, run `39813786193`. Screenshot reale esaminato: avatar in piedi davanti alle postazioni, nessun blocco grigio.
+- **Deploy frontend esistente:** PASS, run `39813774659`. Commit remoto verificato `4cd08117fb3404e65ff6b4745e894e62abdcc1e8`.
+- **Preview ufficiale da usare in ogni successivo report:** https://ai-office-api.jorrob98.workers.dev/
+- **Commit live verificabile:** https://ai-office-api.jorrob98.workers.dev/preview-version.json
+
+**Problema P0 ANCORA APERTO:** seduta credibile + ambiente davvero 3D. Occorre sostituire gradualmente il render 2.5D con arredi geometrici condivisi dal rig e dalla camera, animazioni di ingresso/seduta/rialzata e test screenshot visivi. Non reintrodurre fake pose o grossi proxy sopra la fotografia. Ulteriori blocchi: inferenza Workers AI reale non verificata, persistenza solo browser, nessuna sincronizzazione cloud.
+
+**Pubblicazione:** da questo punto in avanti, riportare sempre preview Cloudflare, commit GitHub, risultati CI ed esito screenshot; non confondere PASS tecnico con verifica estetica.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
