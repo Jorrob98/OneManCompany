@@ -93,10 +93,10 @@ test("AI status advertises ready only with actual binding plus operator access k
   const readyData=await ready.json();
   assert.equal(readyData.ready,true);
   assert.equal(readyData.setupIssue,null);
-  const short=await worker.fetch(new Request(endpoint+"/api/ai/status"),{...aiEnv(),AI_OFFICE_API_KEY:"too-short"},ctx());
+  const short=await worker.fetch(new Request(endpoint+"/api/ai/status"),{...aiEnv(),AI_OFFICE_API_KEY:"short7!"},ctx());
   assert.equal((await short.json()).setupIssue,"operator_secret_missing_or_short");
   const badFormat=await worker.fetch(new Request(endpoint+"/api/ai/status"),
-    {...aiEnv(),AI_OFFICE_API_KEY:"x".repeat(28)+"!"},ctx());
+    {...aiEnv(),AI_OFFICE_API_KEY:"not valid with spaces"},ctx());
   assert.equal((await badFormat.json()).ready,false);
   const noOrigins=await worker.fetch(new Request(endpoint+"/api/ai/status"),
     {...aiEnv(),AI_OFFICE_ALLOWED_ORIGINS:""},ctx());
@@ -106,6 +106,34 @@ test("AI status advertises ready only with actual binding plus operator access k
   assert.equal(ready.headers.get("access-control-allow-origin"),aiOrigin);
   assert.equal((await worker.fetch(new Request(endpoint+"/api/ai/status",{headers:{Origin:"https://evil.example"}}),aiEnv(),ctx())).status,403);
 });
+test("8–10 printable-character operator passwords, including symbols, authenticate real AI.run only",async()=>{
+  const input={title:"Riassumi questa nota",details:"Questa nota è un test",role:"Analista"};
+  for(const shortKey of ["Aa9!4*bc","B7#m?L2x9*"]){
+    let runs=0;
+    const env={...aiEnv(),AI_OFFICE_API_KEY:shortKey,AI:{
+      run:async()=>{runs++;return {response:"Sintesi dal binding di prova"};}
+    }};
+    const state=await (await worker.fetch(
+      new Request(endpoint+"/api/ai/status"),env,ctx())).json();
+    assert.equal(state.ready,true);
+    assert.equal(state.setupIssue,null);
+    const denied=await worker.fetch(requestAI(input,"incorrect!"),env,ctx());
+    assert.equal(denied.status,401);
+    assert.equal(runs,0);
+    const ok=await worker.fetch(requestAI(input,shortKey),env,ctx());
+    assert.equal(ok.status,200);
+    const data=await ok.json();
+    assert.equal(data.kind,"text-draft");
+    assert.equal(data.output,"Sintesi dal binding di prova");
+    assert.equal(runs,1);
+  }
+  for(const invalid of ["Ab9!*xy","has space", "abc\\ndefghi", "X".repeat(201)]){
+    const state=await (await worker.fetch(new Request(endpoint+"/api/ai/status"),
+      {...aiEnv(),AI_OFFICE_API_KEY:invalid},ctx())).json();
+    assert.equal(state.ready,false);
+  }
+});
+
 test("AI preflight checks exact allowed origins and forbidden origins cannot infer",async()=>{
   const req=(origin)=>new Request(endpoint+"/api/ai/generate",{method:"OPTIONS",headers:{"Origin":origin}});
   assert.equal((await worker.fetch(req(aiOrigin),aiEnv(),ctx())).status,204);
@@ -116,7 +144,7 @@ test("AI inference refuses missing key, incorrect key, and missing binding",asyn
   assert.equal((await worker.fetch(requestAI(input,"wrong"),aiEnv(),ctx())).status,401);
   assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI:null},ctx())).status,503);
   assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI_OFFICE_API_KEY:""},ctx())).status,503);
-  assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI_OFFICE_API_KEY:"x".repeat(25)+"!"},ctx())).status,503);
+  assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI_OFFICE_API_KEY:"contains spaces"},ctx())).status,503);
 });
 test("Only real AI.run output is accepted as a completed generated draft",async()=>{
   const input={title:"Scrivi una sintesi",details:"Fatti dati dall'utente",role:"Analista",instructions:"Usa 4 punti"};
