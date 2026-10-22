@@ -457,8 +457,11 @@ function seatedPose(actor,delta,time){
     }
   };
   // Biped thigh/calf hinges. Small spine lean and forward arms for typing.
-  signing("thigh",1.36);
-  signing("calf",-1.38);
+  // Biped knee joints are oriented opposite to the naive local-X pose.
+  // Forward thigh swing and opposing calf fold must be calibrated by
+  // hip-to-knee joint coordinates, not by assuming the avatar label means seated.
+  signing("thigh",-1.36);
+  signing("calf",1.38);
   signing("spine",-.11);
   signing("arm",-.30);
   const isTyping=actor.point==="desk" && actor.workMode==="work" && !reducedMotion.matches;
