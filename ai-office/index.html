@@ -14,6 +14,7 @@
   <script defer src="./penthouse.js"></script>
   <script defer src="./environment.js"></script>
   <script defer src="./interactions.js"></script>
+  <script defer src="./ai-engine.js"></script>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
   <script type="module" src="./agents3d.mjs"></script>
 </head>
@@ -117,7 +118,21 @@
       </section>
       <section class="page" data-view="tasks" aria-label="Incarichi">
         <div class="heading-row"><div><div class="eyebrow">TASK DESK / LAVORI</div><h1>Idee in <em>movimento.</em></h1><p class="section-subtitle">Prepara gli incarichi per i tuoi agenti. L'esecuzione AI arriverà con il collegamento Cloudflare.</p></div><button class="primary-button head-button" data-action="new-task">＋ Crea incarico</button></div>
-        <div class="tasks-info"><span>◉</span><p><strong>Motore non ancora connesso.</strong> Gli incarichi vengono salvati come bozze in attesa. Non simuliamo lavori AI completati.</p></div>
+        <div class="tasks-info"><span>◉</span><p><strong>Bozze verificabili.</strong> Le richieste AI partono solo quando premi Genera e soltanto se il Worker è stato attivato. Le risposte devono essere sempre revisionate: niente lavori esterni eseguiti automaticamente.</p></div>
+        <section class="ai-engine-panel" aria-label="Motore AI reale">
+          <div class="ai-engine-title"><span class="ai-engine-spark">✦</span><div><strong>Motore AI · Cloudflare</strong><small>Generazione testuale manuale, senza automatismi</small></div></div>
+          <div class="ai-engine-state"><span id="aiEngineStatus" data-state="unavailable" role="status" aria-live="polite">Worker non verificato</span><button type="button" data-ai-action="probe">↻ Verifica</button></div>
+          <div class="ai-engine-key">
+            <label for="aiEngineKey">Chiave operatore (solo memoria della pagina)</label>
+            <div class="ai-engine-key-controls"><input id="aiEngineKey" type="password" autocomplete="off" spellcheck="false" maxlength="200" placeholder="Chiave privata Cloudflare Worker">
+              <button type="button" data-ai-action="unlock">Attiva</button>
+              <button type="button" data-ai-action="forget-key">Dimentica</button></div>
+            <small id="aiEngineKeyState">Chiave non caricata</small>
+          </div>
+          <label class="ai-extra-label" for="aiEngineInstructions">Indicazioni per la bozza (facoltative)</label>
+          <textarea id="aiEngineInstructions" maxlength="300" rows="2" placeholder="Es. Risposta in 5 punti, concreta e sintetica."></textarea>
+          <p id="aiEngineInfo" class="ai-engine-footnote">Il token non viene salvato né inviato ad altri siti.</p>
+        </section>
         <div id="taskList" class="task-list"></div>
       </section>
       <section class="page" data-view="collab" aria-label="Collaborazioni e riunioni">
