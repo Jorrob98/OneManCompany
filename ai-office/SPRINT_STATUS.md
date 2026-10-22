@@ -115,6 +115,15 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 
 **Limiti consapevoli:** solo generazione di bozze testuali con revisione umana; nessuna esecuzione del runtime OneManCompany, navigazione, invio email o uso di tool. Questa fase NON avvia automaticamente lo Sprint 07.
 
+### Aggiornamento operativo — 22/10/2026 (hardening Sprint 06)
+
+- Aggiornato **`cloudflare/worker.mjs`**: lo stato `ready` richiede il binding AI, una `AI_OFFICE_API_KEY` di 24–200 caratteri *effettivamente nel formato ammesso* e almeno una origine CORS valida; le chiavi non valide restituiscono `503` anche su generate. Le eccezioni di rate limit/quota non vengono presentate come generazioni concluse.
+- Aggiornato **`cloudflare/worker.test.mjs`**: copertura di chiavi formalmente invalide, allowlist assente e distinzione errori AI. **GitHub Actions AI Office Cloudflare Tests #140: PASS (12/12)**, run `39783037278`.
+- Aggiornato **`ai-office/ai-engine.js`**: comunica quale configurazione manca e distingue chiave errata, quota e rate limit; anche quando `ready=true`, l'interfaccia indica espressamente che serve una *inferenza live* per certificare la generazione.
+- **Nessuna prova di inferenza reale**: il test automatico usa un binding AI simulato. La prova live di `POST /api/ai/generate` non è stata ottenuta; l'interrogazione diretta al Worker da questo ambiente non è accessibile. La precedente verifica Cloudflare aveva trovato `setupIssue=operator_secret_missing_or_short`; tale valore **non è stato verificato come risolto**.
+- **Intervento necessario su Cloudflare:** aggiornare il segreto cifrato `AI_OFFICE_API_KEY` con un valore robusto nel formato URL-safe, senza inserirlo nel repository né in chat; confermare `AI_OFFICE_ALLOWED_ORIGINS` e la pubblicazione del codice aggiornato sul Worker esistente. Per chiudere lo Sprint 06 occorre una risposta generata effettivamente da Workers AI, autorizzata e verificabile.
+- **Stato Sprint 06: BLOCCATO sulla conferma di configurazione/deploy e inferenza live.** Non avviare lo Sprint 07 prima del completamento.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
