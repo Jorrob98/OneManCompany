@@ -430,7 +430,7 @@ function seatedPose(actor,delta,time){
   const weight=actor.seatedWeight;
   // The former hard-coded .50 displacement was approximately a whole avatar
   // height. Keep the pelvis near the true 3D chair's seat, with smooth blending.
-  actor.seatDrop=actor.avatarHeight*.19*weight;
+  actor.seatDrop=actor.avatarHeight*.29*weight;
   actor.body.position.y=actor.baseBodyY-actor.seatDrop;
   // Seated shoulders/head must actually drop to monitor height in this
   // orthographic 2.5D composition, not hover above the workstation.
@@ -441,6 +441,9 @@ function seatedPose(actor,delta,time){
   const scalar=actor.normalScale*distanceFactor;
   // Never squash the whole character by 14% to imitate sitting.
   actor.body.scale.set(scalar,scalar*(1-.025*weight),scalar);
+  // A modest three-quarter view reveals knee bending; front-on rigs looked upright.
+  const seatedFacing=(actor.index%2===0?-.48:.43)*weight;
+  actor.body.rotation.y=THREE.MathUtils.damp(actor.body.rotation.y,seatedFacing,4.8,delta);
   actor.contactShadow.scale.setScalar(THREE.MathUtils.clamp(distanceFactor,.93,1.06));
   actor.contactShadow.material.opacity=(actor.state==="walk"?.70:.82)*(1-.10*weight);
   if(weight<.005)return;
@@ -454,8 +457,8 @@ function seatedPose(actor,delta,time){
     }
   };
   // Biped thigh/calf hinges. Small spine lean and forward arms for typing.
-  signing("thigh",1.20);
-  signing("calf",-1.26);
+  signing("thigh",1.36);
+  signing("calf",-1.38);
   signing("spine",-.11);
   signing("arm",-.30);
   const isTyping=actor.point==="desk" && actor.workMode==="work" && !reducedMotion.matches;
