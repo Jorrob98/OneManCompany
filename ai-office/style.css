@@ -457,3 +457,38 @@
  .ai-task-actions{flex-direction:column}
  .ai-task-actions button{width:100%}
 }
+
+/* AI OFFICE | 3D visibility pass: do not hide real human limbs behind a photo. */
+.penthouse-stage.has-live-3d .aio-furniture-occlusion{
+  display:none;
+}
+.penthouse-stage.has-live-3d .aio-window-bloom,
+.penthouse-stage.has-live-3d .aio-glass-reflection,
+.penthouse-stage.has-live-3d .aio-floor-reflection,
+.penthouse-stage.has-live-3d .aio-architectural-light,
+.penthouse-stage.has-live-3d .aio-sunlight{
+  opacity:.10;
+  animation:none;
+}
+.penthouse-stage.has-live-3d .penthouse-artwork{
+  filter:saturate(.88) contrast(1.01) brightness(1.02);
+}
+.penthouse-stage.has-live-3d[data-atmosphere="night"] .penthouse-artwork{
+  filter:saturate(.84) brightness(.78);
+}
+/* Keep the actual 16:9 scene coordinates aligned with the GLB overlay. */
+@media(min-width:751px){
+  .scene-wrap{aspect-ratio:1672 / 941;height:auto;min-height:0;max-height:none}
+}
+.penthouse-stage.has-live-3d.close-view .penthouse-surface{
+  transform:scale(1.08);
+}
+.penthouse-stage.has-live-3d.focus-view .penthouse-surface{
+  transform:scale(1.14);
+}
+@media(max-width:750px){
+  .penthouse-stage.has-live-3d.close-view .penthouse-surface,
+  .penthouse-stage.has-live-3d.focus-view .penthouse-surface{
+    transform:none;
+  }
+}
