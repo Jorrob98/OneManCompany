@@ -308,6 +308,7 @@ function person(a,index){
  body.scale.setScalar(scale);body.position.y=-bounds.min.y*scale;
  const mixer=new THREE.AnimationMixer(body),sex=key[0],idle=mixer.clipAction(clips[sex].idle);
  idle.play();
+ const walk=mixer.clipAction(clips[sex].walk);walk.enabled=true;
  const limbs={thigh:[],calf:[],foot:[],arm:[],forearm:[]};
  body.traverse(obj=>{
    if(obj.isMesh){obj.castShadow=true;obj.userData.agentId=a.id;interactive.push(obj);}
@@ -329,7 +330,7 @@ function person(a,index){
  const halo=new THREE.Mesh(new THREE.RingGeometry(.34,.41,32),
    new THREE.MeshBasicMaterial({color:0x45a19e,side:THREE.DoubleSide}));
  halo.rotation.x=-Math.PI/2;halo.position.y=.10;g.add(halo);
- agents.set(a.id,{g,body,mixer,limbs,label,halo,baseY:body.position.y,
+ agents.set(a.id,{g,body,mixer,idle,walk,wasWalking:false,limbs,label,halo,baseY:body.position.y,
    seatY:.79,index,slot:{x,z},modelStyle:key,point:"desk",goal:"desk",sit:0});
 }
 function syncPeople(){
@@ -449,12 +450,12 @@ function hookup(){
 let illumination;
 function setMood(mood){
  night=mood!=="day";
- scene.background=new THREE.Color(night?0x0b1221:0x26384b);
- illumination.sun.intensity=night?3.0:3.9;
- illumination.accent.intensity=night?30:15;
- illumination.key.intensity=night?34:20;
- illumination.loungeLight.intensity=night?22:13;
- renderer.toneMappingExposure=night?1.38:1.46;
+ scene.background=new THREE.Color(night?0xc0cbd0:0xe1e8e8);
+ illumination.sun.intensity=night?1.85:2.30;
+ illumination.accent.intensity=night?4:2;
+ illumination.key.intensity=night?7:4;
+ illumination.loungeLight.intensity=night?5:3;
+ renderer.toneMappingExposure=night?1.05:1.10;
 }
 let prev=0;
 function animate(t){
@@ -467,6 +468,12 @@ function animate(t){
        new THREE.Vector3(-5.5+a.index*.45,0,-.5);
    const walking=a.g.position.distanceTo(dest)>.05;
    a.sit=THREE.MathUtils.damp(a.sit,!walking&&a.goal==="desk"?1:0,3.5,dt);
+   const canWalk=walking&&a.sit<.10;
+   if(canWalk!==a.wasWalking){
+     if(canWalk){a.walk.reset().play();a.walk.crossFadeFrom(a.idle,.22,false);}
+     else {a.idle.reset().play();a.idle.crossFadeFrom(a.walk,.22,false);}
+     a.wasWalking=canWalk;
+   }
    a.mixer.update(dt);
    a.body.position.y=a.baseY;
    a.body.updateMatrixWorld(true);
@@ -485,7 +492,7 @@ function animate(t){
        a.body.updateMatrixWorld(true);
      }
    }
-   if(walking){
+   if(canWalk){
      a.g.position.lerp(dest,Math.min(.12,dt*2.1));
      if(a.g.position.distanceTo(dest)<.05){a.g.position.copy(dest);a.point=a.goal;}
    }else a.point=a.goal;
@@ -507,12 +514,14 @@ async function boot(){
   renderer.domElement.className="office3d-canvas";
   renderer.domElement.setAttribute("aria-label","Ufficio tridimensionale interattivo: trascina per ruotare, scorri per ingrandire e tocca un agente per selezionarlo");
   renderer.domElement.setAttribute("tabindex","0");
-  scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1221);scene.fog=new THREE.FogExp2(0x0b1221,.014);
+  scene=new THREE.Scene();scene.background=new THREE.Color(0xe1e8e8);scene.fog=new THREE.FogExp2(0xe1e8e8,.003);
   root=new THREE.Group();scene.add(root);
   agency=new THREE.Group();scene.add(agency);
   camera=new THREE.PerspectiveCamera(38,1,.1,90);
   illumination=lights();
   floorMat.color.setHex(0xbcc6c3);woodPale.color.setHex(0xc7b5a1);
+  neonWarm.emissiveIntensity=.10;neonBlue.emissiveIntensity=.12;
+  neonPurple.emissiveIntensity=.08;
   createShell();deskPods();lounge();meeting();
   await preloadHumans();
   syncPeople();setMood(bridge.getMood());cameraUpdate();
