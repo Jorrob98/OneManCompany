@@ -105,6 +105,7 @@ jobs:
                       if path=="/api/ai/status" and isinstance(data,dict) and data.get("service")=="ai-office" and data.get("version")=="sprint-06":
                           print("Deployment verified: AI OFFICE Sprint 06 API is live.")
                           print("Binding/key configured:",bool(data.get("ready")))
+                          print("Configuration issue:",data.get("setupIssue","none"))
                           valid=True
                   except urllib.error.HTTPError as exc:
                       print("LIVE",path,"HTTP",exc.code)
@@ -142,10 +143,16 @@ jobs:
                       status=resp.status;result=json.loads(resp.read(4000))
               except urllib.error.HTTPError as exc:
                   status=exc.code
-                  try:result=json.loads(exc.read(4000))
-                  except:result={}
+                  raw=exc.read(4000)
+                  try:result=json.loads(raw)
+                  except:
+                      result={"error":"non_json_http_response",
+                              "contentType":exc.headers.get("Content-Type",""),
+                              "sample":raw.decode("utf-8","replace")[:90]}
               except Exception as exc:
                   print("API probe error",type(exc).__name__);continue
               print("Unauthorized request with origin:",bool(origin),
-                    "HTTP:",status,"code:",result.get("error","unknown"))
+                    "HTTP:",status,"code:",result.get("error","unknown"),
+                    "content_type:",result.get("contentType","json"),
+                    "sample:",result.get("sample","").replace("\\n"," "))
           PY
