@@ -144,6 +144,8 @@ try {
     .find(a=>a.id==="a1")?.goal),"desk","Employee wandered away immediately instead of working");
   const seated=await page.evaluate(()=>window.AIOAgents3D.snapshot()
     .find(a=>a.id==="a1"));
+  console.log("AIO seated GLB world-space joints",JSON.stringify(
+    await page.evaluate(()=>window.AIOAgents3D.rigDiagnostics("a1"))));
   assert.equal(seated.posture,"sitting","Worker did not transition into a chair posture");
   assert.ok(seated.sittingBlend>.75,"Seated pose did not finish blending");
   assert.ok(seated.rigLegs>=2,"Leg bones were not detected on the real rigged model");
