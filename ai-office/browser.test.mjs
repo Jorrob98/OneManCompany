@@ -16,6 +16,31 @@ try {
   assert.ok(ready,"Local static server did not start");
   browser=await chromium.launch({channel:"chrome",headless:true,args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader-webgl","--enable-unsafe-swiftshader"]});
   const page=await browser.newPage({viewport:{width:1400,height:900}});
+  // Fake backend only in the automated browser test, never in the live app.
+  // Actual Cloudflare model calls are separately verified by Worker unit tests.
+  await page.route("https://ai-office-api.jorrob98.workers.dev/api/ai/**",async route=>{
+    const req=route.request();
+    const headers={"content-type":"application/json","access-control-allow-origin":"http://127.0.0.1:4173",
+      "access-control-allow-headers":"authorization, content-type","access-control-allow-methods":"GET, POST, OPTIONS"};
+    if(req.method()==="OPTIONS"){await route.fulfill({status:204,headers});return;}
+    if(req.url().endsWith("/status")){await route.fulfill({status:200,headers,body:JSON.stringify({
+      ok:true,ready:true,engine:"cloudflare-workers-ai",onemancompany_runtime:"not-connected"
+    })});return;}
+    if(req.url().endsWith("/generate")){
+      if(req.headers().authorization!=="Bearer sprint_06_example_operator_key_123456"){
+        await route.fulfill({status:401,headers,body:JSON.stringify({ok:false,error:"unauthorized"})});return;
+      }
+      const body=req.postDataJSON();
+      await route.fulfill({status:200,headers,body:JSON.stringify({
+        ok:true,kind:"text-draft",output:"Bozza AI di prova: "+body.title,
+        model:"@cf/meta/llama-3.1-8b-instruct-fp8",
+        producedAt:"2026-10-22T10:00:00Z",
+        requestId:"11111111-2222-4333-8444-555555555555",
+        requiresReview:true
+      })});return;
+    }
+    await route.fulfill({status:404,headers,body:"{}"});
+  });
   const errors=[];
   page.on("pageerror",e=>errors.push(String(e)));
   await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
@@ -288,6 +313,24 @@ try {
   assert.equal(await page.locator('[data-meeting-id="'+meetingId+'"]').count(),1);
   assert.equal(await page.locator('[data-request-id="'+requestId+'"]').count(),1);
   assert.equal(await page.evaluate(id=>window.AIOStudio.getTasks().find(t=>t.id===id)?.agent,sharedTask.id),"a2");
+
+  // Sprint 06 — worker-ready UI does not generate anything until an operator authorizes.
+  await page.locator('[data-page="tasks"]').click();
+  await page.waitForFunction(()=>window.AIOEngine?.getStatus?.().ready===true,null,{timeout:12000});
+  assert.equal(await page.locator('[data-ai-action="generate"]').first().isDisabled(),true);
+  await page.locator("#aiEngineKey").fill("sprint_06_example_operator_key_123456");
+  await page.locator('[data-ai-action="unlock"]').click();
+  assert.equal(await page.locator("#aiEngineKey").inputValue(),"","Operator key must clear from the input");
+  const encryptedStorage=await page.evaluate(()=>JSON.stringify(localStorage));
+  assert.ok(!encryptedStorage.includes("sprint_06_example_operator_key_123456"),"Never persist the operator key");
+  await page.locator('[data-ai-action="generate"][data-id="'+sharedTask.id+'"]').click();
+  await page.waitForFunction(id=>Boolean(window.AIOEngine?.getResult?.(id)),sharedTask.id,{timeout:10000});
+  assert.match(await page.locator("#taskList").innerText(),/BOZZA AI GENERATA · DA REVISIONARE/);
+  assert.match(await page.locator("#taskList").innerText(),/Bozza AI di prova/);
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.match(await page.locator("#taskList").innerText(),/BOZZA AI GENERATA · DA REVISIONARE/);
+  assert.equal(await page.evaluate(()=>window.AIOEngine?.getStatus?.().keyLoaded),false);
+  assert.equal(await page.locator('[data-ai-action="generate"]').first().isDisabled(),true);
 
   // Mobile layout: no horizontal page overflow, navigation available.
   await page.setViewportSize({width:390,height:844});
