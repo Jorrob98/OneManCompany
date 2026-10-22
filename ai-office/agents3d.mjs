@@ -170,32 +170,6 @@ function nameButton(a, actor){
   pickLayer.appendChild(button);
   actor.hit=button;
 }
-function createDeskChair(position) {
-  // Actual 3D furniture, fixed at the workstation instead of moving with an actor.
-  // All dimensions use the avatar's world coordinate scale (roughly 0.9 units tall).
-  const chair=new THREE.Group();
-  const upholstery=new THREE.MeshStandardMaterial({color:0x526272,roughness:.88,metalness:.04});
-  const base=new THREE.MeshStandardMaterial({color:0x47515c,roughness:.65,metalness:.18});
-  const add=(geometry,material,x,y,z)=>{
-    const mesh=new THREE.Mesh(geometry,material);
-    mesh.position.set(x,y,z);
-    chair.add(mesh);
-    return mesh;
-  };
-  add(new THREE.BoxGeometry(.50,.068,.30),upholstery,0,.25,-.13);
-  add(new THREE.BoxGeometry(.47,.46,.065),upholstery,0,.52,-.28);
-  add(new THREE.CylinderGeometry(.025,.025,.22,10),base,0,.12,-.13);
-  add(new THREE.BoxGeometry(.39,.04,.045),base,0,.045,-.13);
-  for(const side of [-1,1]){
-    add(new THREE.BoxGeometry(.045,.025,.24),base,side*.17,.04,-.13);
-  }
-  // Calibrated to the full animated skeleton (not its undersized bind-pose box).
-  chair.scale.setScalar(2.8);
-  chair.position.copy(place(position));
-  chair.position.z=.43; // Cushion under the pelvis; backrest behind it.
-  world.add(chair);
-  return chair;
-}
 function build(a,index) {
   const style=safeStyle(a.modelStyle,index);
   const sex=style.startsWith("f")?"female":"male";
@@ -218,7 +192,6 @@ function build(a,index) {
   body.scale.setScalar(factor);
   // Remove the photographic desk-plane clip: it previously erased legs when
   // the seated body was lowered by almost its entire visible height.
-  const deskChair=createDeskChair(workstation.desk);
   const shade=shadow();holder.add(shade);
   world.add(holder);
   const mixer=new THREE.AnimationMixer(body);
@@ -238,7 +211,7 @@ function build(a,index) {
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
     handBones:[],poseBones:{thigh:[],calf:[],foot:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
     restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,
-    chair:deskChair,avatarHeight,seatDrop:0,seatLift:0,minFootY:null,
+    chair:null,avatarHeight,seatDrop:0,seatLift:0,minFootY:null,
     typingActive:false,arrivedCount:0,activity:"Ingresso",normalScale:factor,contactShadow:shade,depthScale:1};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
   body.traverse(node=>{
@@ -272,8 +245,8 @@ function build(a,index) {
   info.agents=Array.from(stagePeople.keys());
 }
 function postureClip(actor){
-  // The asset pack has no licensed sit/typing clip; leg bends and keyboard
-  // motions are built from its real Biped skeleton, blended over idle.
+  // There is no sit clip in the current licensed GLB pack. Use a credible
+  // standing-at-workstation fallback; never claim seated from idle alone.
   if(actor.point==="desk")return "idle";
   if(actor.point==="meeting")return actor.actions.talk?"talk":"idle";
   return actor.actions.look?"look":"idle";
@@ -295,7 +268,7 @@ function updateClip(actor,next){
       actor.point==="lounge"?"Pausa caffè":
       next==="think"?"Controlla i dati":
       next==="look"?"Legge il monitor":
-      actor.point==="desk"?"Al computer · seduto":"Al computer";
+      actor.point==="desk"?"Alla postazione · demo":"In ufficio";
   }
 }
 // Graph-based aisle navigation avoids pictured workstations and keeps each
@@ -428,9 +401,12 @@ const xAxis=new THREE.Vector3(1,0,0);
 const yAxis=new THREE.Vector3(0,1,0);
 const tilt=new THREE.Quaternion();
 function seatedPose(actor,delta,time){
-  const target=actor.point==="desk"&&actor.state!=="walk"&&!actor.closing?1:0;
+  // Keep workers standing until a visually verified 3D seated clip exists.
+  // Previously this forced a fake seated label and hid feet behind desks.
+  const target=actor.actions.sit && actor.point==="desk"&&actor.state!=="walk"&&!actor.closing?1:0;
   actor.seatedWeight=THREE.MathUtils.damp(actor.seatedWeight,target,5.2,delta);
   const weight=actor.seatedWeight;
+  actor.typingActive=false;
   // The former hard-coded .50 displacement was approximately a whole avatar
   // height. Keep the pelvis near the true 3D chair's seat, with smooth blending.
   actor.seatDrop=actor.avatarHeight*.29*weight;
@@ -601,8 +577,8 @@ function animateActor(actor,delta,time){
   seatedPose(actor,delta,time);
   if(actor.hit && actor.point==="desk" && actor.seatedWeight>.75){
     const label=actor.hit.querySelector(".office-agent-mode");
-    if(label)label.textContent=actor.typingActive?"Seduto · digita al PC":
-      actor.workMode==="look"?"Seduto · legge":"Seduto · lavora";
+    if(label)label.textContent=actor.seatedWeight>.75?"Seduta 3D":
+      "Alla postazione · demo";
   }
   if(actor.hit){
     const projected=actor.holder.position.clone();
