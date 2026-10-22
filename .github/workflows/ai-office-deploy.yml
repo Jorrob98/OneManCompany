@@ -13,54 +13,87 @@ concurrency:
   group: ai-office-cloudflare-worker-deploy
   cancel-in-progress: false
 jobs:
+  verify-and-check-access:
+    runs-on: ubuntu-latest
+    outputs:
+      credentials: ${{ steps.access.outputs.configured }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify Cloudflare Worker contract (11 tests)
+        run: node --test cloudflare/worker.test.mjs
+      - name: Check public Worker state without exposing secrets
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          for path in ("/health","/api/ai/status"):
+              url="https://ai-office-api.jorrob98.workers.dev"+path
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"AIO-check"}),timeout=12) as r:
+                      payload=r.read(4096).decode("utf-8","replace")
+                      try:
+                          obj=json.loads(payload)
+                          fields={k:obj.get(k) for k in ("service","status","ready","version","engine") if k in obj}
+                          result=json.dumps(fields)
+                      except (ValueError,TypeError):
+                          result="not_json (AI OFFICE API not confirmed)"
+                      print("LIVE",path,"HTTP",r.status,result)
+              except urllib.error.HTTPError as e:
+                  print("LIVE",path,"HTTP",e.code,"(AI OFFICE API not confirmed)")
+              except Exception as e:
+                  print("LIVE",path,"unreachable",type(e).__name__)
+          PY
+      - name: Determine deployment credentials without exposing values
+        id: access
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "### Worker deployment eligible" >> "$GITHUB_STEP_SUMMARY"
+            echo "Cloudflare credential secrets are present; attempting to deploy." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=AI OFFICE not deployed::Cloudflare deployment secrets are missing; deployment job will be SKIPPED."
+            echo "### AI OFFICE — NO DEPLOY" >> "$GITHUB_STEP_SUMMARY"
+            echo "Missing Cloudflare deployment credentials. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to repository Actions secrets and rerun this workflow. Never share their values in chat." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   deploy-existing-worker:
+    needs: verify-and-check-access
+    if: needs.verify-and-check-access.outputs.credentials == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Validate Worker behavior before deploy
-        run: node --test cloudflare/worker.test.mjs
-      - name: Probe existing Worker publicly (read-only)
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json,urllib.request,urllib.error
-          base="https://ai-office-api.jorrob98.workers.dev"
-          for path in ("/health","/api/ai/status"):
-              url=base+path
-              try:
-                  with urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"AIO-sprint-6-health"}),timeout=12) as resp:
-                      code=resp.status
-                      raw=resp.read(4000).decode("utf-8","replace")
-                  try:
-                      obj=json.loads(raw)
-                      # Only nonsecret public status fields are printed.
-                      safe={k:obj.get(k) for k in ("service","status","version","ready","engine","onemancompany_runtime") if k in obj}
-                      summary=json.dumps(safe)
-                  except Exception:
-                      summary="not_json"
-                  print(f"LIVE {path}: HTTP {code}; {summary}")
-              except urllib.error.HTTPError as e:
-                  print(f"LIVE {path}: HTTP {e.code}; not ready")
-              except Exception as e:
-                  print(f"LIVE {path}: unreachable ({type(e).__name__})")
-          PY
-      - name: Deploy only if Cloudflare credentials already exist
-        id: deploy
+      - name: Publish existing ai-office-api (no new worker)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare/wrangler.toml
+      - name: Check AI API exposed after deployment
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "deployed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=AI OFFICE deployment blocked::Cloudflare deployment secrets are absent; validated code but did not deploy."
-            echo "### AI OFFICE deployment: NOT DEPLOYED" >> "$GITHUB_STEP_SUMMARY"
-            echo "Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to GitHub Actions secrets, then run this workflow manually. Worker AI binding and operator key must also be configured." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          npx --yes wrangler@4 deploy --config cloudflare/wrangler.toml
-          echo "deployed=true" >> "$GITHUB_OUTPUT"
-          echo "### AI OFFICE Worker: deploy command succeeded" >> "$GITHUB_STEP_SUMMARY"
-          echo "A successful upload does NOT prove AI inference. Verify AI binding, allowed origin and operator key separately." >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY'
+          import json,urllib.request,time
+          url="https://ai-office-api.jorrob98.workers.dev/api/ai/status"
+          data=None
+          for i in range(5):
+              try:
+                  with urllib.request.urlopen(url,timeout=15) as response:
+                      data=json.loads(response.read(4096))
+                  if data.get("service")=="ai-office" and data.get("version")=="sprint-06":
+                      print("Deployment verified: AI OFFICE Sprint 06 API is live.")
+                      print("Binding/key configured:",bool(data.get("ready")))
+                      break
+              except Exception:
+                  pass
+              time.sleep(3)
+          else:
+              raise SystemExit("Deployment command completed, but live AI OFFICE API was not confirmed.")
+          PY
