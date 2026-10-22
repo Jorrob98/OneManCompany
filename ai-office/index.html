@@ -16,7 +16,17 @@
   <script defer src="./interactions.js"></script>
   <script defer src="./ai-engine.js"></script>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
-  <script type="module" src="./agents3d.mjs"></script>
+  <script type="module">
+    // The former photographic 2.5D is a fallback only; geometric office is default.
+    if(new URLSearchParams(location.search).has("legacy")){
+      import("./agents3d.mjs");
+    } else {
+      import("./office-real3d.mjs").catch(error=>{
+        console.error("3D office module failed; opening fallback",error);
+        import("./agents3d.mjs");
+      });
+    }
+  </script>
 </head>
 <body>
 <div class="app-shell">
@@ -74,7 +84,7 @@
             </div>
             <div class="scene-wrap">
               <canvas id="roomCanvas" aria-hidden="true"></canvas>
-              <div class="penthouse-stage" id="penthouseStage" data-background="living-v3" aria-label="Ufficio premium interattivo con selezione dipendenti">
+              <div class="penthouse-stage" id="penthouseStage" data-background="living-v3" aria-label="Vista fotografica di riserva; la scena predefinita usa veri arredi 3D">
                 <div class="penthouse-surface" id="penthouseSurface">
                   <img class="penthouse-artwork" src="./assets/penthouse-living-v3.webp" alt="Ufficio AI premium senza persone statiche, con postazioni vuote, vetrate panoramiche, sala riunioni e area relax" loading="eager" decoding="async">
                   <div class="penthouse-wash"></div>
@@ -85,7 +95,7 @@
               <div class="room-hint"><span class="hint-icon">⌖</span> Seleziona gli agenti 3D · spostamenti dimostrativi</div>
               <div class="scene-watermark"><span class="scene-watermark-spark">✦</span> AIO / STUDIO</div>
             </div>
-            <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Penthouse Control · Atmosfera premium</span><button id="roomMood" title="Giorno / Tramonto / Notte / Auto">☼ Ambiente</button></div>
+            <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Ufficio 3D · Ambiente semplice</span><button id="roomMood" title="Giorno / Tramonto / Notte / Auto">☼ Ambiente</button></div>
           </section>
           <aside class="side-stack">
             <div class="employee-panel">
