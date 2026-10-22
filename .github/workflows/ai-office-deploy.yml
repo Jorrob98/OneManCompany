@@ -80,20 +80,38 @@ jobs:
       - name: Check AI API exposed after deployment
         run: |
           python3 - <<'PY'
-          import json,urllib.request,time
-          url="https://ai-office-api.jorrob98.workers.dev/api/ai/status"
-          data=None
+          import json,urllib.request,urllib.error,time
+          base="https://ai-office-api.jorrob98.workers.dev"
+          valid=False
           for i in range(5):
-              try:
-                  with urllib.request.urlopen(url,timeout=15) as response:
-                      data=json.loads(response.read(4096))
-                  if data.get("service")=="ai-office" and data.get("version")=="sprint-06":
-                      print("Deployment verified: AI OFFICE Sprint 06 API is live.")
-                      print("Binding/key configured:",bool(data.get("ready")))
-                      break
-              except Exception:
-                  pass
+              for path in ("/health","/api/ai/status"):
+                  try:
+                      req=urllib.request.Request(base+path,headers={
+                          "Accept":"application/json",
+                          "User-Agent":"AI-Office-Deploy-Check"
+                      })
+                      with urllib.request.urlopen(req,timeout=15) as response:
+                          content_type=response.headers.get("Content-Type","")
+                          raw=response.read(4096).decode("utf-8","replace")
+                          code=response.status
+                      try:
+                          data=json.loads(raw)
+                      except ValueError:
+                          data=None
+                      summary=({k:data.get(k) for k in ("service","status","version","ready","engine") if k in data}
+                               if isinstance(data,dict) else
+                               {"not_json":raw[:100].replace("\\n"," ").replace("\\r"," ")})
+                      print("LIVE",path,"status",code,"content-type",content_type,"response",json.dumps(summary,ensure_ascii=False))
+                      if path=="/api/ai/status" and isinstance(data,dict) and data.get("service")=="ai-office" and data.get("version")=="sprint-06":
+                          print("Deployment verified: AI OFFICE Sprint 06 API is live.")
+                          print("Binding/key configured:",bool(data.get("ready")))
+                          valid=True
+                  except urllib.error.HTTPError as exc:
+                      print("LIVE",path,"HTTP",exc.code)
+                  except Exception as exc:
+                      print("LIVE",path,"failure",type(exc).__name__)
+              if valid:break
               time.sleep(3)
-          else:
-              raise SystemExit("Deployment command completed, but live AI OFFICE API was not confirmed.")
+          if not valid:
+              raise SystemExit("Worker was uploaded, but the public API endpoint did not return AI OFFICE JSON.")
           PY
