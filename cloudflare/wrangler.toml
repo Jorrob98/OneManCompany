@@ -19,3 +19,10 @@ binding = "AI"
 # AI_OFFICE_ALLOWED_ORIGINS = exact comma-separated HTTPS preview origins,
 # configure as Worker variable in Cloudflare dashboard; never use *.
 # The existing Telegram secrets remain optional for /api/ai endpoints.
+
+# Publish the EXISTING AI OFFICE frontend from the same Worker.
+# No second Worker, Pages project or ShipStatic deployment.
+[assets]
+directory = "../ai-office"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/telegram/*", "/health"]
