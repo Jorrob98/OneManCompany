@@ -16,7 +16,8 @@ export const HUBS=Object.freeze({
   deskDoor2:{x:68,y:63},deskDoor3:{x:79,y:62}
 });
 export const DESKS=[
- {x:36,y:58},{x:52,y:59},{x:68,y:51},{x:79,y:50}
+ // Ground contact in the existing office illustration, not desktop surfaces.
+ {x:36,y:64},{x:52,y:64},{x:68,y:56},{x:79,y:50}
 ];
 export const ENTRIES=[
  {x:58,y:93},{x:47,y:92},{x:72,y:92},{x:87,y:92}
