@@ -420,3 +420,40 @@
  .collab-card{padding:15px}
  .collab-ledger-row{flex-direction:column;gap:4px}
 }
+
+/* Sprint 06 — explicit Cloudflare AI controls. Approved office imagery untouched. */
+.ai-engine-panel{border:1px solid #3d5870;background:linear-gradient(130deg,#1b2d3c,#161f30);
+ border-radius:14px;padding:20px;margin-bottom:20px;display:grid;gap:12px}
+.ai-engine-title{display:flex;align-items:center;gap:12px}
+.ai-engine-title strong{display:block;color:#f6d3a6;font:700 17px 'Space Grotesk',sans-serif}
+.ai-engine-title small{display:block;color:#a7b9ca;margin-top:4px;font-size:11px}
+.ai-engine-spark{font-size:30px;color:#f1ca91}
+.ai-engine-state{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.ai-engine-state>span{color:#d4ad99;font-size:12px;line-height:1.5}
+.ai-engine-state>[data-state="available"]{color:#a7e1be}
+.ai-engine-state>[data-state="checking"]{color:#decfa9}
+.ai-engine-state button,.ai-engine-key button,.ai-task-actions button{
+ background:#2b4256;border:1px solid #56728a;border-radius:9px;color:#e8eef6;padding:9px 12px;font-weight:700;font-size:11px}
+.ai-engine-key label,.ai-extra-label{display:block;color:#ccd9e6;font-size:11px;font-weight:700;margin-bottom:6px}
+.ai-engine-key-controls{display:flex;flex-wrap:wrap;gap:8px}
+.ai-engine-key-controls input{flex:1 1 200px;min-width:0;background:#101927;border:1px solid #435771;
+ color:#edf2f8;border-radius:9px;padding:10px 12px}
+.ai-engine-key small,.ai-engine-footnote{font-size:10px;color:#93a8ba;margin:5px 0;overflow-wrap:anywhere}
+.ai-engine-panel textarea{min-height:65px;width:100%;resize:vertical;color:#e8f0f7;
+ background:#111a29;border:1px solid #435771;border-radius:9px;padding:11px 12px;font-size:12px}
+.task-item .task-content{min-width:0}
+.ai-task-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ai-task-actions button:disabled{opacity:.46;cursor:not-allowed}
+.ai-result{margin-top:12px;border:1px solid #486659;border-radius:9px;background:#142829;padding:12px;max-width:100%}
+.ai-result summary{cursor:pointer;color:#b8e2c8;font-size:12px;font-weight:700}
+.ai-provenance{font-size:10px;color:#a4baaf;line-height:1.6;margin:10px 0;overflow-wrap:anywhere}
+.ai-result pre{font:400 12px/1.65 'DM Sans',sans-serif;color:#e7eee6;white-space:pre-wrap;overflow-wrap:anywhere;
+ max-height:500px;overflow:auto;margin:0}
+@media(max-width:750px){
+ .ai-engine-panel{padding:13px}
+ .ai-engine-title strong{font-size:15px}
+ .ai-engine-state{flex-direction:column;align-items:stretch}
+ .ai-engine-key-controls button{flex:1 1 auto}
+ .ai-task-actions{flex-direction:column}
+ .ai-task-actions button{width:100%}
+}
