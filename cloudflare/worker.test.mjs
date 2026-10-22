@@ -86,9 +86,15 @@ const requestAI=(body,key=apiKey,origin=aiOrigin,method="POST")=>new Request(end
 });
 test("AI status advertises ready only with actual binding plus operator access key",async()=>{
   const empty=await worker.fetch(new Request(endpoint+"/api/ai/status"),{},ctx());
-  assert.equal((await empty.json()).ready,false);
+  const emptyData=await empty.json();
+  assert.equal(emptyData.ready,false);
+  assert.equal(emptyData.setupIssue,"ai_binding_unavailable");
   const ready=await worker.fetch(new Request(endpoint+"/api/ai/status",{headers:{Origin:aiOrigin}}),aiEnv(),ctx());
-  assert.equal((await ready.json()).ready,true);
+  const readyData=await ready.json();
+  assert.equal(readyData.ready,true);
+  assert.equal(readyData.setupIssue,null);
+  const short=await worker.fetch(new Request(endpoint+"/api/ai/status"),{...aiEnv(),AI_OFFICE_API_KEY:"too-short"},ctx());
+  assert.equal((await short.json()).setupIssue,"operator_secret_missing_or_short");
   assert.equal(ready.headers.get("access-control-allow-origin"),aiOrigin);
   assert.equal((await worker.fetch(new Request(endpoint+"/api/ai/status",{headers:{Origin:"https://evil.example"}}),aiEnv(),ctx())).status,403);
 });
