@@ -189,8 +189,10 @@ function createDeskChair(position) {
   for(const side of [-1,1]){
     add(new THREE.BoxGeometry(.045,.025,.24),base,side*.17,.04,-.13);
   }
+  // Calibrated to the full animated skeleton (not its undersized bind-pose box).
+  chair.scale.setScalar(2.8);
   chair.position.copy(place(position));
-  chair.position.z=-.28; // Backrest remains behind the rig, not in front of its legs.
+  chair.position.z=.43; // Cushion under the pelvis; backrest behind it.
   world.add(chair);
   return chair;
 }
@@ -236,7 +238,7 @@ function build(a,index) {
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
     handBones:[],poseBones:{thigh:[],calf:[],foot:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
     restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,
-    chair:deskChair,avatarHeight,seatDrop:0,
+    chair:deskChair,avatarHeight,seatDrop:0,seatLift:0,minFootY:null,
     typingActive:false,arrivedCount:0,activity:"Ingresso",normalScale:factor,contactShadow:shade,depthScale:1};
   // Use the GLB's actual Biped forearms for subtle computer-working gestures.
   body.traverse(node=>{
@@ -443,7 +445,7 @@ function seatedPose(actor,delta,time){
   // Never squash the whole character by 14% to imitate sitting.
   actor.body.scale.set(scalar,scalar*(1-.025*weight),scalar);
   // A modest three-quarter view reveals knee bending; front-on rigs looked upright.
-  const seatedFacing=(actor.index%2===0?-.48:.43)*weight;
+  const seatedFacing=(actor.index%2===0?-1.03:.98)*weight;
   actor.body.rotation.y=THREE.MathUtils.damp(actor.body.rotation.y,seatedFacing,4.8,delta);
   actor.contactShadow.scale.setScalar(THREE.MathUtils.clamp(distanceFactor,.93,1.06));
   actor.contactShadow.material.opacity=(actor.state==="walk"?.70:.82)*(1-.10*weight);
@@ -515,6 +517,19 @@ function seatedPose(actor,delta,time){
     poseSegment(thigh,calf,new THREE.Vector3(side*.08,-.06,1));
     const foot=actor.poseBones.foot.find(b=>b.parent===calf);
     if(foot)poseSegment(calf,foot,new THREE.Vector3(side*.025,-1,.12));
+  }
+  // A world-space ground constraint for the animated ankles: previously feet
+  // were ~0.4 units below the floor, leaving the hips floating above tiny chairs.
+  // Compute afresh from the baseline pose every frame; never accumulate offsets.
+  if(actor.poseBones.foot.length>=2){
+    actor.body.updateMatrixWorld(true);
+    const low=Math.min(...actor.poseBones.foot.map(foot=>
+      foot.getWorldPosition(new THREE.Vector3()).y));
+    actor.seatLift=(.025-low)*weight;
+    actor.body.position.y+=actor.seatLift;
+    actor.body.updateMatrixWorld(true);
+    actor.minFootY=Math.min(...actor.poseBones.foot.map(foot=>
+      foot.getWorldPosition(new THREE.Vector3()).y));
   }
 }
 function animateActor(actor,delta,time){
@@ -656,6 +671,8 @@ info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   depthScale:Number(a.depthScale.toFixed(3)),shadowOpacity:Number(a.contactShadow.material.opacity.toFixed(2)),
   posture:a.seatedWeight>.75?"sitting":a.seatedWeight>.08?"transition":"standing",
   sittingBlend:Number(a.seatedWeight.toFixed(3)),typing:a.typingActive,
+  seatLift:Number(a.seatLift.toFixed(3)),
+  minFootY:a.minFootY===null?null:Number(a.minFootY.toFixed(3)),
   avatarHeight:Number(a.avatarHeight.toFixed(3)),
   seatDrop:Number(a.seatDrop.toFixed(3)),
   chairVisible:Boolean(a.chair?.parent),clipEnabled:false,
