@@ -362,3 +362,61 @@
 
 /* Keep all personnel actions usable in narrow desktop cards as well as phones. */
 .person-card .card-actions{flex-wrap:wrap}
+
+/* Sprint 05: premium collaboration board; approved office scene untouched. */
+.collab-banner{padding:14px 17px;background:#272b38;border:1px solid #594d4b;
+ border-radius:12px;color:#b9c8d6;line-height:1.6;font-size:12px;margin-bottom:18px}
+.collab-banner strong{color:#f2d4b2}
+.collab-summary{display:flex;gap:13px;margin-bottom:23px;flex-wrap:wrap}
+.collab-summary-item{flex:1 1 140px;display:flex;flex-direction:column;gap:7px;
+ background:#182334;border:1px solid #354558;border-radius:13px;padding:16px 18px}
+.collab-summary-item span{font:600 10px 'IBM Plex Mono',monospace;color:#a0b2c7}
+.collab-summary-item strong{font:700 25px 'Space Grotesk',sans-serif;color:#f3d2a4}
+.collab-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:25px 0 12px}
+.collab-heading h2{font:700 19px 'Space Grotesk',sans-serif;margin:0}
+.collab-heading button{padding:10px 14px;font-size:12px}
+.collab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.collab-card{min-width:0;background:linear-gradient(142deg,#202d3d,#171e2c);
+ border:1px solid #3b4b5f;border-radius:14px;padding:19px 20px;color:#e5edf6}
+.collab-card h3{font:700 17px 'Space Grotesk',sans-serif;letter-spacing:-.3px;margin:13px 0 8px;overflow-wrap:anywhere}
+.collab-card p{color:#acbfd0;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.collab-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.collab-icon{font-size:25px;color:#efc998}
+.collab-tag{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.3px;color:#a9d3cd;
+ border:1px solid #416469;padding:6px 9px;border-radius:999px;text-align:right}
+.collab-members,.collab-actions,.speaker-row{display:flex;flex-wrap:wrap;gap:7px}
+.collab-members{margin:14px 0}
+.collab-members span{border-radius:999px;background:#324558;color:#cce2ea;padding:5px 10px;font-size:11px}
+.collab-members .unavailable{opacity:.55;text-decoration:line-through}
+.collab-actions{margin-top:15px}
+.collab-actions button,.speaker-row button{border:1px solid #547083;border-radius:9px;background:#2c4051;
+ color:#e7eef5;font-size:11px;font-weight:700;padding:9px 12px}
+.collab-actions button:hover,.speaker-row button:hover{background:#3e5767}
+.speaker-row{align-items:center;border-top:1px solid #354455;padding-top:12px;margin-top:12px}
+.speaker-row strong{font-size:11px;color:#ebd2ac;width:100%}
+.speaker-row button[disabled]{opacity:.4;cursor:not-allowed}
+.collab-records{font-size:11px;line-height:1.6;color:#cbded8}
+.collab-records>div{margin-top:7px;overflow-wrap:anywhere}
+.collab-records small{color:#90a4ae}
+.collab-warning{color:#f6bd8b!important}
+.collab-task{color:#edce9d;font-size:11px;margin-top:12px;overflow-wrap:anywhere}
+.collab-empty{padding:22px;background:#1a2535;border:1px dashed #455871;border-radius:12px;color:#a1b2c5;font-size:12px}
+.collab-ledger{display:grid;gap:7px}
+.collab-ledger-row{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;
+ border:1px solid #304359;background:#192436;border-radius:10px;padding:11px 14px;
+ font-size:11px;color:#dae6ed;overflow-wrap:anywhere}
+.collab-ledger-row time{white-space:nowrap;color:#8e9fb1;font-size:10px}
+.collab-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.collab-checks label{display:flex;align-items:center;gap:9px;color:#d5e2e8;font-size:12px}
+.collab-checks input{accent-color:#98d9b7;width:16px;height:16px}
+.modal{max-height:calc(100dvh - 42px);overflow-y:auto}
+@media(max-width:750px){
+ .nav-link{width:20%;font-size:9px;gap:1px}
+ .nav-link .nav-icon{font-size:19px}
+ .collab-grid{grid-template-columns:1fr}
+ .collab-heading{align-items:stretch}
+ .collab-heading h2{font-size:16px}
+ .collab-heading button{max-width:55%}
+ .collab-card{padding:15px}
+ .collab-ledger-row{flex-direction:column;gap:4px}
+}
