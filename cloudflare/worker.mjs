@@ -106,7 +106,10 @@ function allowedOrigin(request, env) {
     return { allowed: false, headers: {} };
   }
   const list = configuredOrigins(env);
-  if (!list.includes(origin)) return { allowed: false, headers: {} };
+  // Requests from the studio hosted on this SAME Worker origin need no CORS
+  // exception; external sites still require the exact explicit allowlist.
+  const sameOrigin = origin === new URL(request.url).origin;
+  if (!sameOrigin && !list.includes(origin)) return { allowed: false, headers: {} };
   return { allowed: true, headers: {
     "access-control-allow-origin": origin, "vary": "Origin",
     "access-control-allow-methods": "GET, POST, OPTIONS",
@@ -136,7 +139,7 @@ async function aiAPI(request, env, url) {
     if(request.method!=="GET")return json({ok:false,error:"method_not_allowed"},405,headers);
     const aiAvailable=typeof env.AI?.run==="function";
     const operatorKeyValid=operatorKeyConfigured(env);
-    const originsConfigured=configuredOrigins(env).length>0;
+    const originsConfigured=configuredOrigins(env).length>0||typeof env.ASSETS?.fetch==="function";
     return json({ok:true,service:"ai-office",version:"sprint-06",
       ready:aiAvailable&&operatorKeyValid&&originsConfigured,
       setupIssue:!aiAvailable?"ai_binding_unavailable":!operatorKeyValid?"operator_secret_missing_or_short":
