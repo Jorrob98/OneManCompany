@@ -165,9 +165,15 @@ function renderTasks(){
   const list=$("taskList");
   list.innerHTML=state.tasks.length?state.tasks.map(t=>{
     const a=state.agents.find(e=>e.id===t.agent);
+    const ai=window.AIOEngine?.getResult?.(t.id);
     return '<article class="task-item"><div class="task-glyph">◈</div><div class="task-content"><strong>'+esc(t.title)+'</strong><p>'+esc(t.detail||"Nessuna descrizione")+'</p>'+
-      '<div class="task-meta">IN ATTESA · '+esc(a?.name||"Da assegnare")+' · '+new Date(t.at).toLocaleDateString("it-IT")+'</div></div>'+
-      '<button data-action="delete-task" data-id="'+esc(t.id)+'" aria-label="Elimina incarico">✕</button></article>';
+      '<div class="task-meta">'+(ai?"BOZZA AI GENERATA · DA REVISIONARE":"IN ATTESA")+' · '+esc(a?.name||"Da assegnare")+' · '+new Date(t.at).toLocaleDateString("it-IT")+'</div>'+
+      (ai?'<details class="ai-result" open><summary>✦ Risultato generato · verifica umana necessaria</summary>'+
+       '<div class="ai-provenance">Fonte: '+esc(ai.model)+' · '+esc(ai.producedAt)+
+       ' · richiesta '+esc(ai.requestId)+'</div><pre>'+esc(ai.output)+'</pre></details>':"")+
+      '<div class="ai-task-actions"><button type="button" data-ai-action="generate" data-id="'+esc(t.id)+'">✦ Genera bozza AI</button>'+
+      (ai?'<button type="button" data-ai-action="clear-result" data-id="'+esc(t.id)+'">Rimuovi bozza</button>':"")+
+      '</div></div><button data-action="delete-task" data-id="'+esc(t.id)+'" aria-label="Elimina incarico">✕</button></article>';
   }).join(""):'<div class="empty-state"><span>✧</span><strong>Una pagina tutta da scrivere.</strong><p>Prepara il tuo primo incarico: resterà in attesa finché non collegheremo l’AI.</p><button class="primary-button" data-action="new-task">＋ Crea un incarico</button></div>';
 }
 function renderActivity(){
@@ -243,7 +249,7 @@ function newTask(id){
 function info(){
  openModal("Che cosa funziona già?",'<p class="modal-text"><strong>Questa è una vera anteprima interattiva.</strong> La scena premium contiene fino a quattro agenti con modelli GLB riggati professionali, animazioni e personalizzazione. Lo sfondo non contiene dipendenti statici.</p>'+
  '<p class="modal-text">Puoi assumere agenti, metterli in ferie, pensionarli, recuperarli e creare incarichi: i cambiamenti vengono salvati <strong>solo nel browser</strong> che stai usando.</p>'+
- '<p class="modal-note">Non è ancora collegata a Cloudflare, Telegram, al database o al motore multi-agente di OneManCompany. Non esegue attività AI e non sincronizza i dati tra i dispositivi.</p>'+
+ '<p class="modal-note">Non è ancora collegata a Cloudflare, Telegram, al database o al motore multi-agente di OneManCompany. La scena 3D non esegue attività AI. Le bozze testuali possono essere generate solo dopo il collegamento del Worker con chiave operatore; non sincronizza i dati tra i dispositivi.</p>'+
  '<div class="modal-actions"><button class="primary-button" data-action="close">Ho capito</button></div>');
 }
 function roadmap(){
@@ -576,7 +582,7 @@ $("roomMood").addEventListener("click",()=>{const modes=["evening","day","night"
 window.addEventListener("resize",resizeCanvas);
 if("ResizeObserver" in window)new ResizeObserver(resizeCanvas).observe(canvas);
 window.AIOStudio={
- getAgents:()=>state.agents,getTasks:()=>state.tasks.map(t=>({...t})),
+ getAgents:()=>state.agents,getTasks:()=>state.tasks.map(t=>({...t})),refresh:renderAll,
  getSelected:()=>state.selected,getMood:()=>state.mood,
  openModal:(title,contents)=>openModal(title,contents),closeModal,toast,
  logEvent:(kind,message)=>{activity(String(kind).slice(0,4),String(message).slice(0,180));renderAll();},
