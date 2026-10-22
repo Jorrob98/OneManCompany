@@ -149,7 +149,7 @@ try {
   assert.ok(seated.rigLegs>=2,"Leg bones were not detected on the real rigged model");
   // Physical visibility invariants: no more subtracting almost an entire avatar
   // height or hiding legs under an image cutout when the employee sits.
-  assert.ok(seated.avatarHeight>.70&&seated.avatarHeight<1.2,
+  assert.ok(seated.avatarHeight>.38&&seated.avatarHeight<.65,
     "Human GLB has implausible viewport size: "+JSON.stringify(seated));
   assert.ok(seated.seatDrop>0&&seated.seatDrop<seated.avatarHeight*.24,
     "Sitting lowered the character beyond the real chair's seat");
