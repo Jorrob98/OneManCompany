@@ -101,6 +101,16 @@
       <section class="page" data-view="people" aria-label="Dipendenti">
         <div class="heading-row"><div><div class="eyebrow">THE PEOPLE / ORGANICO</div><h1>Le persone <em>contano.</em></h1><p class="section-subtitle">Assumi, metti in ferie, richiama o pensiona i tuoi agenti.</p></div><button class="primary-button head-button" data-action="hire">＋ Nuovo agente</button></div>
         <div class="segmented"><button class="segment active" data-filter="all">Tutti</button><button class="segment" data-filter="available">Disponibili</button><button class="segment" data-filter="vacation">In ferie</button><button class="segment" data-filter="retired">Pensionati</button></div>
+        <div class="people-tools" aria-label="Ricerca e filtro del personale">
+          <label for="peopleSearch" class="sr-only">Cerca dipendenti</label>
+          <input id="peopleSearch" type="search" maxlength="60" placeholder="⌕ Cerca nome, competenza, ruolo…" autocomplete="off" aria-label="Cerca dipendenti">
+          <label for="peopleDepartment" class="sr-only">Filtra per reparto</label>
+          <select id="peopleDepartment" aria-label="Filtra per reparto"><option value="all">Tutti i reparti</option>
+            <option>Direzione</option><option>Tecnologia</option><option>Design</option><option>Ricerca</option>
+            <option>Qualità</option><option>Operazioni</option><option>Analisi</option><option>Marketing</option>
+          </select>
+          <span id="peopleSummary" aria-live="polite"></span>
+        </div>
         <div id="peopleGrid" class="people-grid"></div>
       </section>
       <section class="page" data-view="tasks" aria-label="Incarichi">
