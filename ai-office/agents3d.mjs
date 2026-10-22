@@ -211,7 +211,7 @@ function build(a,index) {
   holder.position.copy(position);
   // GLB skin rest-pose bounding boxes under-report actual animated extent:
   // calibrate against the photographed 2.5D office (not a full-world 3D camera).
-  const factor=.65*(sex==="female"?1.45:1.50)*[1,.96,.92,.90][index]/safeHeight;
+  const factor=.36*(sex==="female"?1.45:1.50)*[1,.96,.85,.82][index]/safeHeight;
   const avatarHeight=safeHeight*factor;
   body.scale.setScalar(factor);
   // Remove the photographic desk-plane clip: it previously erased legs when
