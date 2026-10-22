@@ -34,7 +34,7 @@ test("all dynamic user supplied text is escaped for HTML",()=>{
 test("prototype does not pretend to execute agent tasks",()=>{
   assert.match(html,/non agenti AI operativi/);
   assert.match(html,/Nessun dato viene sincronizzato/);
-  assert.match(js,/Non esegue attività AI/);
+  assert.match(js,/La scena 3D non esegue attività AI/);
   assert.doesNotMatch(js,/TELEGRAM_BOT_TOKEN\s*=/);
 });
 test("interface loads the approved premium office asset instead of the old 3D module",()=>{
@@ -71,4 +71,20 @@ test("Sprint 05 collaboration workflow is explicitly director-controlled",()=>{
  assert.match(collab,/localStorage\.setItem/);
  assert.match(collab,/meetingDecisionForm/);
  assert.match(css,/\.collab-grid/);
+});
+
+
+test("Sprint 06: real AI invocation is explicit, secure and never conflated with visuals",()=>{
+ const client=readFileSync(new URL("./ai-engine.js",import.meta.url),"utf8");
+ for(const id of ["aiEngineKey","aiEngineInstructions","aiEngineStatus"]){
+   assert.match(html,new RegExp('id="'+id+'"'));
+ }
+ assert.match(html,/src="\.\/ai-engine\.js"/);
+ assert.match(js,/data-ai-action="generate"/);
+ assert.match(js,/BOZZA AI GENERATA · DA REVISIONARE/);
+ assert.match(client,/\/api\/ai\/generate/);
+ assert.match(client,/requiresReview:true/);
+ assert.match(client,/sessione/);
+ assert.doesNotMatch(client,/localStorage\.setItem\([^)]*key/i);
+ assert.match(client,/getStatus:/);
 });
