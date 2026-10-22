@@ -174,6 +174,46 @@ try {
   await page.locator('#hireForm button[type="submit"]').click();
   assert.equal(await page.locator("#statEmployees").innerText(),"05");
   assert.ok(await page.locator("#teamMiniList").innerText().then(s=>s.includes("Sofia")));
+  // Sprint 04: editable personnel records, progression, scheduled leave and filters.
+  const sofiaId=await page.evaluate(()=>window.AIOStudio.getAgents().find(a=>a.name==="Sofia")?.id);
+  assert.ok(sofiaId);
+  await page.locator('[data-page="people"]').click();
+  await page.locator("#peopleSearch").fill("Sofia");
+  assert.equal(await page.locator("#peopleGrid .person-card").count(),1);
+  await page.locator("#peopleDepartment").selectOption("Design");
+  assert.equal(await page.locator("#peopleGrid .person-card").count(),1);
+  await page.locator("#peopleDepartment").selectOption("Marketing");
+  assert.equal(await page.locator("#peopleGrid .person-card").count(),0);
+  await page.locator("#peopleDepartment").selectOption("all");
+  await page.locator('#peopleGrid [data-action="edit-personnel"][data-id="'+sofiaId+'"]').click();
+  await page.locator("#personnelDepartment").selectOption("Analisi");
+  await page.locator("#personnelRole").selectOption("Analista");
+  await page.locator("#personnelLevel").selectOption("Senior");
+  await page.locator('input[name="skills"][value="Design UI"]').uncheck();
+  await page.locator('input[name="skills"][value="Dati"]').check();
+  await page.locator('input[name="skills"][value="Ricerca"]').check();
+  await page.locator('#personnelForm button[type="submit"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).department,sofiaId),"Analisi");
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).skills.includes("Dati"),sofiaId),true);
+  await page.locator('#peopleGrid [data-action="promote"][data-id="'+sofiaId+'"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).level,sofiaId),"Lead");
+  const dates=await page.evaluate(()=>{
+    const fmt=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+    const d=new Date();d.setDate(d.getDate()+1);const start=fmt(d);d.setDate(d.getDate()+1);
+    return {start,end:fmt(d)};
+  });
+  await page.locator('#peopleGrid [data-action="plan-leave"][data-id="'+sofiaId+'"]').click();
+  await page.locator("#leaveStart").fill(dates.start);
+  await page.locator("#leaveEnd").fill(dates.end);
+  await page.locator('#leaveForm button[type="submit"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).status,sofiaId),"available");
+  await page.locator("#peopleSearch").fill("");
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.deepEqual(await page.evaluate(id=>{
+    const a=window.AIOStudio.getAgents().find(a=>a.id===id);
+    return {level:a.level,department:a.department,skills:a.skills,leaveStart:a.leaveStart};
+  },sofiaId),{level:"Lead",department:"Analisi",skills:["Ricerca","Dati"],leaveStart:dates.start});
+  await page.locator('[data-page="office"]').click();
   await page.reload({waitUntil:"domcontentloaded"});
   assert.equal(await page.locator("#statEmployees").innerText(),"05");
   await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready" &&
