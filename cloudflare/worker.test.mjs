@@ -95,6 +95,14 @@ test("AI status advertises ready only with actual binding plus operator access k
   assert.equal(readyData.setupIssue,null);
   const short=await worker.fetch(new Request(endpoint+"/api/ai/status"),{...aiEnv(),AI_OFFICE_API_KEY:"too-short"},ctx());
   assert.equal((await short.json()).setupIssue,"operator_secret_missing_or_short");
+  const badFormat=await worker.fetch(new Request(endpoint+"/api/ai/status"),
+    {...aiEnv(),AI_OFFICE_API_KEY:"x".repeat(28)+"!"},ctx());
+  assert.equal((await badFormat.json()).ready,false);
+  const noOrigins=await worker.fetch(new Request(endpoint+"/api/ai/status"),
+    {...aiEnv(),AI_OFFICE_ALLOWED_ORIGINS:""},ctx());
+  const noOriginsData=await noOrigins.json();
+  assert.equal(noOriginsData.ready,false);
+  assert.equal(noOriginsData.setupIssue,"allowed_origins_missing");
   assert.equal(ready.headers.get("access-control-allow-origin"),aiOrigin);
   assert.equal((await worker.fetch(new Request(endpoint+"/api/ai/status",{headers:{Origin:"https://evil.example"}}),aiEnv(),ctx())).status,403);
 });
@@ -108,6 +116,7 @@ test("AI inference refuses missing key, incorrect key, and missing binding",asyn
   assert.equal((await worker.fetch(requestAI(input,"wrong"),aiEnv(),ctx())).status,401);
   assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI:null},ctx())).status,503);
   assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI_OFFICE_API_KEY:""},ctx())).status,503);
+  assert.equal((await worker.fetch(requestAI(input),{...aiEnv(),AI_OFFICE_API_KEY:"x".repeat(25)+"!"},ctx())).status,503);
 });
 test("Only real AI.run output is accepted as a completed generated draft",async()=>{
   const input={title:"Scrivi una sintesi",details:"Fatti dati dall'utente",role:"Analista",instructions:"Usa 4 punti"};
@@ -148,4 +157,21 @@ test("AI rejects untrusted oversized and invalid requests without invoking model
   assert.equal((await worker.fetch(requestAI({title:"OK",details:"A".repeat(4000)}),env,ctx())).status,422);
   assert.equal((await worker.fetch(new Request(endpoint+"/api/ai/generate",{method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"text/plain"},body:"test"}),env,ctx())).status,415);
   assert.equal(invoked,0);
+});
+
+test("Workers AI limits return honest 429 errors without a simulated draft",async()=>{
+  const input={title:"Sintesi",role:"Analista"};
+  for(const [message,expected,retryable] of [
+    ["rate limit exceeded","ai_rate_limited",true],
+    ["daily quota exceeded","ai_quota_exceeded",false]
+  ]){
+    const env={...aiEnv(),AI:{run:async()=>{throw Error(message);}}};
+    const res=await worker.fetch(requestAI(input),env,ctx());
+    assert.equal(res.status,429);
+    const data=await res.json();
+    assert.equal(data.ok,false);
+    assert.equal(data.error,expected);
+    assert.equal(data.retryable,retryable);
+    assert.equal("output" in data,false);
+  }
 });
