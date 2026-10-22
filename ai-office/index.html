@@ -13,6 +13,7 @@
   <script defer src="./app.js"></script>
   <script defer src="./penthouse.js"></script>
   <script defer src="./environment.js"></script>
+  <script defer src="./interactions.js"></script>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
   <script type="module" src="./agents3d.mjs"></script>
 </head>
@@ -28,7 +29,8 @@
       <button class="nav-link active" data-page="office"><span class="nav-icon">▦</span><span>Il mio ufficio</span><span class="nav-hint">01</span></button>
       <button class="nav-link" data-page="people"><span class="nav-icon">♙</span><span>Dipendenti</span><span class="nav-hint" id="nav-people">04</span></button>
       <button class="nav-link" data-page="tasks"><span class="nav-icon">◈</span><span>Incarichi</span><span class="nav-hint" id="nav-tasks">00</span></button>
-      <button class="nav-link" data-page="activity"><span class="nav-icon">◷</span><span>Attività</span><span class="nav-hint">↗</span></button>
+      <button class="nav-link" data-page="collab"><span class="nav-icon">♧</span><span>Collaborazioni</span><span class="nav-hint" id="nav-collab">00</span></button>
+       <button class="nav-link" data-page="activity"><span class="nav-icon">◷</span><span>Attività</span><span class="nav-hint">↗</span></button>
     </nav>
     <div class="rail-bottom">
       <div class="rail-panel">
@@ -117,6 +119,23 @@
         <div class="heading-row"><div><div class="eyebrow">TASK DESK / LAVORI</div><h1>Idee in <em>movimento.</em></h1><p class="section-subtitle">Prepara gli incarichi per i tuoi agenti. L'esecuzione AI arriverà con il collegamento Cloudflare.</p></div><button class="primary-button head-button" data-action="new-task">＋ Crea incarico</button></div>
         <div class="tasks-info"><span>◉</span><p><strong>Motore non ancora connesso.</strong> Gli incarichi vengono salvati come bozze in attesa. Non simuliamo lavori AI completati.</p></div>
         <div id="taskList" class="task-list"></div>
+      </section>
+      <section class="page" data-view="collab" aria-label="Collaborazioni e riunioni">
+        <div class="heading-row"><div><div class="eyebrow">TEAM SYNC / STUDIO</div>
+          <h1>Insieme, <em>meglio.</em></h1>
+          <p class="section-subtitle">Organizza le interazioni e registra le decisioni. Il direttore conferma ogni azione.</p></div>
+        </div>
+        <div class="collab-banner">✳ <strong>Interazioni guidate.</strong> Riunioni animate in 3D e passaggi di bozze registrati nel browser. Nessuna conversazione AI o esecuzione autonoma.</div>
+        <div class="collab-summary">
+         <div class="collab-summary-item"><span>RIUNIONI ATTIVE</span><strong id="collabMeetingsCount">0</strong></div>
+         <div class="collab-summary-item"><span>PROPOSTE IN ATTESA</span><strong id="collabRequestsCount">0</strong></div>
+        </div>
+        <div class="collab-heading"><h2>♧ Riunioni</h2><button class="primary-button" data-collab-action="new-meeting">＋ Nuova riunione</button></div>
+        <div id="collabMeetings" class="collab-grid"></div>
+        <div class="collab-heading"><h2>↗ Collaborazioni</h2><button class="secondary-button" data-collab-action="new-request">＋ Nuova proposta</button></div>
+        <div id="collabRequests" class="collab-grid"></div>
+        <div class="collab-heading"><h2>◷ Registro verificabile</h2></div>
+        <div id="collabLedger" class="collab-ledger" aria-live="polite"></div>
       </section>
       <section class="page" data-view="activity" aria-label="Attività">
         <div class="heading-row"><div><div class="eyebrow">STUDIO LOG / DIARIO</div><h1>Ogni passo <em>conta.</em></h1><p class="section-subtitle">Cronologia delle operazioni effettuate in questa anteprima.</p></div><button class="secondary-button" id="resetDemo">Ripristina anteprima</button></div>
