@@ -56,3 +56,19 @@ test("Sprint 04 personnel administration is present and remains local",()=>{
  assert.match(js,/data-action="edit-personnel"/);
  assert.match(js,/getAll\("skills"\)/);
 });
+
+test("Sprint 05 collaboration workflow is explicitly director-controlled",()=>{
+ const collab=readFileSync(new URL("./interactions.js",import.meta.url),"utf8");
+ for(const id of ["collab","collabMeetings","collabRequests","collabLedger","collabMeetingsCount"]){
+   assert.match(html,new RegExp('(?:data-view|id)="'+id+'"'),"Missing collaboration UI "+id);
+ }
+ for(const command of ["start-meeting","end-meeting","speaker","decision","approve-request","reject-request","handoff"]){
+   assert.ok(collab.includes('"'+command+'"'),"Missing collaboration action: "+command);
+ }
+ assert.match(collab,/nessun dialogo AI reale/i);
+ assert.match(collab,/setMeetingSession/);
+ assert.match(js,/transferTask:/);
+ assert.match(collab,/localStorage\.setItem/);
+ assert.match(collab,/meetingDecisionForm/);
+ assert.match(css,/\.collab-grid/);
+});
