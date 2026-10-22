@@ -136,6 +136,24 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 - **Verifiche:** GitHub Actions `AI Office Cloudflare Tests` #151 PASS e successivo run sul commit finale; `AI Office Studio UI` #266 PASS (desktop/mobile).
 - **Pubblicazione:** workflow del Worker esistente `ai-office-api` #13, run `39798426669`. Lo Sprint 06 resta aperto finché `/api/ai/status` non mostra `ready=true` e una generazione online autorizzata non riesce.
 
+### Ripresa operativa del 22/10/2026 — audit 3D e correzioni progressive (NON conclusa)
+
+**Codice aggiornato nel branch della PR #1:**
+- `ai-office/agents3d.mjs`: disattivato il clipping delle gambe del modello GLB, sostituita la traslazione fissa della seduta con un offset proporzionale alla scala del personaggio, introdotte semplici sedie geometriche 3D ancorate alle postazioni, corretto il ridimensionamento troppo aggressivo, introdotta una leggera orientazione laterale e aumentata la flessione Biped.
+- `ai-office/movement.mjs`: corrette tre coordinate di contatto delle scrivanie rispetto alle posizioni dei piedi nella scena effettivamente mostrata.
+- `ai-office/style.css`: disattivate le maschere fotografiche che nascondevano le gambe, ridotti alcuni riflessi scenografici, riallineato il rapporto dimensionale del quadro e moderato lo zoom.
+- `ai-office/browser.test.mjs`: aggiunti controlli su taglio dei GLB, presenza della mesh sedia, altezza dell'avatar e traslazione seduta.
+
+**Verifiche:** GitHub Actions `AI Office Studio UI` run `39806182501` **PASS** su Chrome desktop e viewport mobile, comprese le regressioni dei flussi esistenti; screenshot reali scaricati e ispezionati. Anche l'anteprima del commit precedente `1bbcba1444a3` ha superato i test.
+
+**Controllo visivo onesto:** rispetto allo screenshot precedente le figure non scompaiono più dalla vita in giù e la scala è stata ricalibrata, ma **la seduta NON appare ancora sufficientemente credibile**: alcune pose sembrano ancora erette o collocate sopra/di fronte al mobile anziché su di esso. Il fondo mantiene un'estetica troppo lussuosa per la richiesta del proprietario. La scena attiva carica `agents3d.mjs` sopra un'illustrazione 2.5D; il file `office3d.js` esiste ma non è montato nella pagina corrente. I test di postura verificano la logica e i limiti dell'offset, **non** il contatto corporeo perfetto con la sedia.
+
+**Lavoro residuo obbligatorio prima del collaudo grafico definitivo:** coordinare personaggi e sedie in uno stesso sistema geometrico 3D con un sistema di coordinate reale, implementare e convalidare una vera transizione di seduta e rialzata con collisioni, sostituire progressivamente lo sfondo fotografico lussuoso con un ambiente più semplice, e verificare camera/inquadratura su desktop e iPhone reali. Nessuna nuova preview statica pubblicata durante questo passaggio.
+
+**Sprint 06:** il Worker `ai-office-api` era stato pubblicato con successo nel run `39798426669` con supporto ai segreti di 8+ caratteri, ma `/api/ai/status` continuava a mostrare `ready=false`, `setupIssue=operator_secret_missing_or_short`. Nessuna inferenza AI live verificata, quindi lo sprint resta aperto.
+
+**Non dichiarare progetto completo o 100%.** Le correzioni di visibilità sono integrate e testate; la seduta e l'ambiente richiedono ancora sviluppo e verifica visiva.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
