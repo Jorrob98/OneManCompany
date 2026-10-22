@@ -24,6 +24,7 @@ jobs:
           node --check ai-office/agents3d.mjs
           node --check ai-office/movement.mjs
           node --check ai-office/interactions.js
+          node --check ai-office/ai-engine.js
       - name: UI smoke tests
         run: node --test ai-office/studio.test.mjs ai-office/movement.test.mjs
       - name: Install browser test runner
