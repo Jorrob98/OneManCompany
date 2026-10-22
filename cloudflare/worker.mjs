@@ -179,7 +179,7 @@ async function aiAPI(request, env, url) {
   } catch (error) {
     const message=String(error?.message || "").toLowerCase();
     const limited=Number(error?.status)===429 || /rate.limit|too.many.requests/.test(message);
-    const quota=/quota|daily.limit|limit.exceeded/.test(message);
+    const quota=/quota|daily.limit|credits.exhausted/.test(message);
     if(limited || quota)
       return json({ok:false,error:quota?"ai_quota_exceeded":"ai_rate_limited",
         retryable:!quota},429,headers);
