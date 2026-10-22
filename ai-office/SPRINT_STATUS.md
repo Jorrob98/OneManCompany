@@ -73,16 +73,33 @@ La scheda "Personalizza personaggio 3D" permette di scegliere tra **8 modelli di
 39. **Filtri e contatori:** filtro per reparto affiancato agli stati esistenti e conteggio dei risultati/disponibili.
 40. **Persistenza e storico:** migrazione compatibile dei profili esistenti in localStorage, modifiche e promozioni tracciate, archivio pensionati conservato e incarichi non eseguiti rimessi da assegnare.
 
-**Verifiche:** test automatici `studio.test.mjs` e `browser.test.mjs` estesi per scheda, promozione, ferie, ricerca, reparti e persistenza su desktop/mobile. La scena premium GLB è invariata. Il gate GitHub Actions va verificato sul commit finale dello sprint.
+**Verifiche:** test automatici `studio.test.mjs` e `browser.test.mjs` estesi per scheda, promozione, ferie, ricerca, reparti e persistenza su desktop/mobile. La scena premium GLB è invariata. Il gate GitHub Actions del commit finale 806c0de è stato verificato: tutti i cinque workflow PASS, inclusi browser desktop e mobile.
 
 **Limiti dichiarati:** gestione personale esclusivamente locale (nessun cloud o sync); ferie future attivate quando il browser esegue la pagina, non da server; carico basato su bozze assegnate, non su produttività AI reale. I quattro slot 3D simultanei restano invariati.
+
+## Sprint 05 — Interazioni tra agenti (41–50) ✅ Implementato e verificato
+
+41. **Agenda riunioni:** creazione di una riunione con titolo e ordine del giorno, inseriti dal direttore.
+42. **Partecipanti controllati:** scelta da due a quattro dipendenti disponibili, senza duplicati.
+43. **Convocazione 3D:** alla partenza tutti gli avatar visibili coinvolti raggiungono la sala riunioni tramite la rete dello Sprint 3; una sola riunione attiva.
+44. **Turni di parola visivi:** il direttore sceglie il relatore e soltanto il suo avatar può usare il gesto GLB di conversazione; niente testo o audio AI inventati.
+45. **Decisioni autentiche:** inserimento manuale di note/decisioni collegate alla riunione, con data.
+46. **Richieste di collaborazione:** scelta di mittente, destinatario e obiettivo con verifica degli agenti disponibili.
+47. **Approvazione e rifiuto:** soltanto un click esplicito del direttore aggiorna la proposta; nessun finto consenso degli agenti.
+48. **Passaggio di incarichi:** una bozza realmente assegnata al mittente può essere trasferita al collega solo dopo approvazione, con verifica della capacità (tre bozze).
+49. **Registro cronologico:** log locale di riunioni, note, approvazioni e trasferimenti, anche nel diario generale.
+50. **Persistenza e responsive:** nuova sezione Collaborazioni con conteggi, stati, controlli per smartphone, ripristino dei dati dopo reload e cancellazione coerente con il reset dello studio.
+
+**Test:** `studio.test.mjs` include ora 13 test automatici (13 PASS/0 FAIL nel run #39746794408). `browser.test.mjs` verifica il ciclo riunione → scelta relatore → decisione → fine, più proposta → approvazione → trasferimento reale di bozza → persistenza. Il run #39746794408 è PASS su desktop/mobile. Un controllo aggiuntivo dell'overflow della nuova pagina mobile è stato introdotto nel commit successivo e va verificato nel gate finale prima di chiudere la release.
+
+**Limiti dichiarati:** tutti i dati restano in localStorage, senza identità/autorizzazioni server né messaggi AI. Il direttore è l'unico che inserisce decisioni o approva collaborazioni; la presenza/gestualità nella sala riunioni è una simulazione visiva 2.5D/GLB, non prova di discussione o lavoro reali. Avatar contemporanei: massimo quattro.
 
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
 - [x] 03 — Percorsi intelligenti: collisioni approssimate tra agenti, assegnazione postazioni, entrate/uscite, routine
 - [x] 04 — Gestione del personale: ruoli, competenze, reparti, ferie e promozioni
-- [ ] 05 — Interazioni tra agenti: riunioni, collaborazione, scambi verificabili
+- [x] 05 — Interazioni tra agenti: riunioni, collaborazione, scambi verificabili
 - [ ] 06 — Motore AI realmente operativo, strumenti, verifiche e autorizzazioni
 - [ ] 07 — Incarichi completi: assegnazione, stato reale, output, errori e audit
 - [ ] 08 — Telegram, login, cloud, sincronizzazione e backup
