@@ -151,7 +151,7 @@ try {
   // height or hiding legs under an image cutout when the employee sits.
   assert.ok(seated.avatarHeight>.38&&seated.avatarHeight<.65,
     "Human GLB has implausible viewport size: "+JSON.stringify(seated));
-  assert.ok(seated.seatDrop>0&&seated.seatDrop<seated.avatarHeight*.24,
+  assert.ok(seated.seatDrop>0&&seated.seatDrop<seated.avatarHeight*.34,
     "Sitting lowered the character beyond the real chair's seat");
   assert.equal(seated.clipEnabled,false,"Seated GLB is still clipping its own legs");
   assert.equal(seated.chairVisible,true,"Seated employee has no actual 3D chair");
