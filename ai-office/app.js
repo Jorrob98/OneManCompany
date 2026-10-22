@@ -171,7 +171,9 @@ function renderTasks(){
       (ai?'<details class="ai-result" open><summary>✦ Risultato generato · verifica umana necessaria</summary>'+
        '<div class="ai-provenance">Fonte: '+esc(ai.model)+' · '+esc(ai.producedAt)+
        ' · richiesta '+esc(ai.requestId)+'</div><pre>'+esc(ai.output)+'</pre></details>':"")+
-      '<div class="ai-task-actions"><button type="button" data-ai-action="generate" data-id="'+esc(t.id)+'">✦ Genera bozza AI</button>'+
+      '<div class="ai-task-actions"><button type="button" data-ai-action="generate" data-id="'+esc(t.id)+'"'+
+      (window.AIOEngine?.getStatus?.().ready&&window.AIOEngine?.getStatus?.().keyLoaded?"":" disabled")+
+      '>✦ Genera bozza AI</button>'+
       (ai?'<button type="button" data-ai-action="clear-result" data-id="'+esc(t.id)+'">Rimuovi bozza</button>':"")+
       '</div></div><button data-action="delete-task" data-id="'+esc(t.id)+'" aria-label="Elimina incarico">✕</button></article>';
   }).join(""):'<div class="empty-state"><span>✧</span><strong>Una pagina tutta da scrivere.</strong><p>Prepara il tuo primo incarico: resterà in attesa finché non collegheremo l’AI.</p><button class="primary-button" data-action="new-task">＋ Crea un incarico</button></div>';
