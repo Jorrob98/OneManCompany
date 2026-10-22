@@ -1,0 +1,35 @@
+name: AI Office Cloudflare Deploy
+on:
+  push:
+    branches: ["ai-office/cloudflare-telegram-v1"]
+    paths:
+      - "cloudflare/worker.mjs"
+      - "cloudflare/wrangler.toml"
+      - ".github/workflows/ai-office-deploy.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ai-office-cloudflare-worker-deploy
+  cancel-in-progress: false
+jobs:
+  deploy-existing-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Worker behavior before deploy
+        run: node --test cloudflare/worker.test.mjs
+      - name: Deploy only if Cloudflare credentials already exist
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "NOT DEPLOYED: missing Cloudflare deployment credentials in GitHub Actions."
+            exit 0
+          fi
+          npx --yes wrangler@4 deploy --config cloudflare/wrangler.toml
+          echo "DEPLOY COMMAND COMPLETED: verify live Worker binding and secrets separately."
