@@ -124,5 +124,6 @@
  window.addEventListener("studio:reset",()=>{results={};key="";busy=false;ready=false;localStorage.removeItem(STORE);render();status("Worker non verificato");});
  window.AIOEngine={getResult,probe,getStatus:()=>({ready,keyLoaded:Boolean(key),busy})};
  render();
+ bridge.refresh();
  probe();
 })();
