@@ -66,7 +66,7 @@ async function aiReply(env, question) {
 /* Sprint 06: manual, authenticated text generation only.
  * Never expose a secret or invoke user-supplied tools.
  * The presence of a binding does not prove a successful inference. */
-const OUTPUT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const OUTPUT_MODEL = MODEL;
 const RESPONSE_HEADERS = {
   "cache-control": "no-store",
   "x-content-type-options": "nosniff",
