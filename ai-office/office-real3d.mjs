@@ -351,6 +351,15 @@ function syncPeople(){
  for(const [id,a] of agents){a.halo.visible=id===selected;a.label.visible=id===selected;}
  info.agents=[...agents.keys()];
 }
+info.rigContact=(id)=>{
+ const a=agents.get(id);
+ if(!a)return null;
+ a.body.updateMatrixWorld(true);
+ const y=b=>Number(b.getWorldPosition(new THREE.Vector3()).y.toFixed(3));
+ return {seatY:a.seatY,blend:Number(a.sit.toFixed(3)),
+   hips:a.limbs.thigh.map(y),knees:a.limbs.calf.map(y),
+   ankles:a.limbs.foot.map(y),bodyY:Number(a.body.position.y.toFixed(3))};
+};
 window.AIOAgents3D={
  status:"loading",agents:[],
  command:(id,zone)=>{
