@@ -234,7 +234,7 @@ function build(a,index) {
     pauseSeconds:0,routeNodes:[],yieldCount:0,yieldDelay:0,occupiedNode:null,
     motionSeed:index*2.71+.4,gestureTimer:0,workMode:"work",
     path:[],pathGoal:null,lastTransition:0,walkSpeed:1.6+index*.09,
-    handBones:[],poseBones:{thigh:[],calf:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
+    handBones:[],poseBones:{thigh:[],calf:[],foot:[],arm:[],forearm:[],finger:[],spine:[],head:[]},
     restoredRotations:new Map(),baseBodyY:body.position.y,seatedWeight:0,
     chair:deskChair,avatarHeight,seatDrop:0,
     typingActive:false,arrivedCount:0,activity:"Ingresso",normalScale:factor,contactShadow:shade,depthScale:1};
@@ -246,6 +246,7 @@ function build(a,index) {
       actor.handBones.push(node);actor.poseBones.forearm.push(node);
     } else if(/thigh|upperleg|upper_leg/.test(name))actor.poseBones.thigh.push(node);
     else if(/calf|shin|lowerleg|lower_leg/.test(name))actor.poseBones.calf.push(node);
+    else if(/(foot|ankle)/.test(name))actor.poseBones.foot.push(node);
     else if(/upperarm|upper_arm/.test(name))actor.poseBones.arm.push(node);
     else if(/spine/.test(name))actor.poseBones.spine.push(node);
     else if(/(finger|thumb|index|pinky|middle|ring)/.test(name))actor.poseBones.finger.push(node);
@@ -457,11 +458,8 @@ function seatedPose(actor,delta,time){
     }
   };
   // Biped thigh/calf hinges. Small spine lean and forward arms for typing.
-  // Biped knee joints are oriented opposite to the naive local-X pose.
-  // Forward thigh swing and opposing calf fold must be calibrated by
-  // hip-to-knee joint coordinates, not by assuming the avatar label means seated.
-  signing("thigh",-1.36);
-  signing("calf",1.38);
+  // Leg joints use a world-space two-bone target, not arbitrary local-X twists.
+  // The Biped's local X runs along the limb on this imported rig.
   signing("spine",-.11);
   signing("arm",-.30);
   const isTyping=actor.point==="desk" && actor.workMode==="work" && !reducedMotion.matches;
@@ -490,6 +488,33 @@ function seatedPose(actor,delta,time){
   // each worker; never continuously spin heads or accumulate bone rotations.
   if(!reducedMotion.matches && (actor.workMode==="look"||actor.point==="meeting")){
     signing("head",.042*Math.sin(time*.0012+actor.motionSeed),yAxis);
+  }
+  // Align femurs roughly horizontally and shins vertically using actual
+  // joint coordinates, preserving the original skinning and idle animation.
+  // The target is in front of the actor (toward the camera), not into the desk.
+  const unit=(v)=>v.normalize();
+  const poseSegment=(bone,child,direction)=>{
+    const p=bone.getWorldPosition(new THREE.Vector3());
+    const c=child.getWorldPosition(new THREE.Vector3());
+    const current=c.sub(p);
+    if(current.lengthSq()<.000001)return;
+    const blended=unit(current.clone().normalize().lerp(unit(direction),weight));
+    const correction=new THREE.Quaternion().setFromUnitVectors(current.normalize(),blended);
+    const worldQ=bone.getWorldQuaternion(new THREE.Quaternion());
+    const inv=worldQ.clone().invert();
+    const local=inv.multiply(correction).multiply(worldQ);
+    actor.restoredRotations.set(bone,bone.quaternion.clone());
+    bone.quaternion.multiply(local);
+    bone.updateMatrixWorld(true);
+  };
+  actor.body.updateMatrixWorld(true);
+  for(const thigh of actor.poseBones.thigh){
+    const calf=actor.poseBones.calf.find(b=>b.parent===thigh);
+    if(!calf)continue;
+    const side=thigh.name.toLowerCase().includes("_l_")?-1:1;
+    poseSegment(thigh,calf,new THREE.Vector3(side*.08,-.06,1));
+    const foot=actor.poseBones.foot.find(b=>b.parent===calf);
+    if(foot)poseSegment(calf,foot,new THREE.Vector3(side*.025,-1,.12));
   }
 }
 function animateActor(actor,delta,time){
@@ -621,7 +646,8 @@ info.rigDiagnostics=(id)=> {
   return {height:actor.avatarHeight,point:actor.point,
     seatedWeight:actor.seatedWeight,
     hips:actor.body.position.y,
-    thighs:sample("thigh"),calves:sample("calf"),arms:sample("arm"),forearms:sample("forearm")};
+    thighs:sample("thigh"),calves:sample("calf"),feet:sample("foot"),
+    arms:sample("arm"),forearms:sample("forearm")};
 };
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
