@@ -289,7 +289,9 @@ function action(kind,id){
  }
  if(kind==="confirm-retire"&&a){
    a.status="retired";a.leaveStart="";a.leaveEnd="";state.selected=available()[0]?.id||"";
-   activity("▤",a.name+" è stato pensionato.");closeModal();renderAll();toast("Pensionamento registrato.");return;
+   const waiting=state.tasks.filter(t=>t.agent===a.id);
+   waiting.forEach(t=>{t.agent="";});
+   activity("▤",a.name+" è stato pensionato."+(waiting.length?" "+waiting.length+" incarichi riportati a da assegnare.":""));closeModal();renderAll();toast("Pensionamento registrato.");return;
  }
  if(kind==="reinstate"&&a&&a.status==="retired"){
    a.status="available";a.leaveStart="";a.leaveEnd="";state.selected=a.id;activity("✦",a.name+" è stato riassunto.");toast(a.name+" è di nuovo in ufficio.");renderAll();return;
