@@ -22,6 +22,7 @@ jobs:
         run: |
           node --check ai-office/app.js
           node --check ai-office/agents3d.mjs
+          node --check ai-office/office-real3d.mjs
           node --check ai-office/movement.mjs
           node --check ai-office/interactions.js
           node --check ai-office/ai-engine.js
@@ -31,6 +32,8 @@ jobs:
         run: npm install --no-save playwright-core@1.56.1
       - name: UI interactions on desktop and mobile
         run: node ai-office/browser.test.mjs
+      - name: Real geometric 3D and rig-to-chair browser tests
+        run: node ai-office/real3d.test.mjs
       - name: Store actual 3D browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,3 +46,6 @@ jobs:
             ai-office/office-seated-desktop.png
             ai-office/office-seated-scene.png
             ai-office/office-premium-mobile.png
+            ai-office/office-real3d-desktop.png
+            ai-office/office-real3d-scene.png
+            ai-office/office-real3d-mobile.png
