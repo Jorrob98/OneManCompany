@@ -54,7 +54,13 @@
      if(!res.ok)throw Error("Worker HTTP "+res.status);
      const data=await res.json();
      ready=data?.ok===true&&data?.ready===true&&data?.engine==="cloudflare-workers-ai";
-     status(ready?"Motore disponibile · autenticazione necessaria":"Worker non configurato",""+(ready?"available":"unavailable"));
+     const issues={
+       ai_binding_unavailable:"Binding Workers AI non configurato sul Worker",
+       operator_secret_missing_or_short:"Chiave AI_OFFICE_API_KEY assente o non valida su Cloudflare",
+       allowed_origins_missing:"Imposta AI_OFFICE_ALLOWED_ORIGINS su Cloudflare"
+     };
+     status(ready?"Worker configurato · inferenza live da verificare":(issues[data?.setupIssue]||"Worker non configurato"),
+       ready?"available":"unavailable");
    } catch {status("Worker non raggiungibile o API non pubblicata");}
    finally{checking=false;render();}
  }
@@ -82,7 +88,8 @@
      const data=await res.json().catch(()=>({error:"invalid_response"}));
      if(!res.ok||!data.ok)throw Error(({
        unauthorized:"Chiave operatore non valida",origin_not_allowed:"Anteprima non autorizzata su Cloudflare",
-       inference_failed:"Errore di inferenza o quota esaurita",ai_binding_unavailable:"Binding AI non configurato",
+       inference_failed:"Errore di inferenza",ai_rate_limited:"Troppe richieste: riprova più tardi",
+       ai_quota_exceeded:"Quota Workers AI esaurita",ai_binding_unavailable:"Binding AI non configurato",
        operator_key_not_configured:"Chiave operatore non configurata sul Worker"
      })[data.error]||"Errore API "+res.status);
      if(data.kind!=="text-draft"||typeof data.output!=="string"||!data.output.trim()||
