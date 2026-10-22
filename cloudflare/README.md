@@ -68,7 +68,7 @@ Il Worker offre:
 
 - `GET /api/ai/status`: indica se il binding Workers AI e la chiave operatore sono configurati; **non** dimostra che il modello abbia risposto.
 - `POST /api/ai/generate`: genera una **bozza di testo reale** chiamando `env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", ...)`.
-- Autorizzazione `Authorization: Bearer` con segreto `AI_OFFICE_API_KEY` (24–200 caratteri alfanumerici, trattino o underscore), memorizzato soltanto nella memoria della pagina.
+- Autorizzazione `Authorization: Bearer` con segreto `AI_OFFICE_API_KEY` (8–200 caratteri ASCII stampabili senza spazi, compresi simboli come `*`; 8–10 supportati, chiavi più lunghe consigliate), memorizzato soltanto nella memoria della pagina.
 - CORS con lista esatta `AI_OFFICE_ALLOWED_ORIGINS` (origini HTTPS separate da virgola, senza slash finale; per esempio `https://YOUR-PREVIEW.shipstatic.com`).
 - Input rigorosamente limitato e prompt senza strumenti né operazioni esterne; non è prevista un'esecuzione automatica del backend originale OneManCompany.
 - Errori espliciti senza falsi output; risposte positive con `output`, `model`, `producedAt`, `requestId`, `requiresReview`.
@@ -77,7 +77,7 @@ Il Worker offre:
 
 1. Pubblicare la cartella `cloudflare/` come aggiornamento del Worker **ai-office-api** esistente (Wrangler: `npx wrangler deploy --config cloudflare/wrangler.toml` dalla root del repository).
 2. Collegare il binding `AI` sotto `[ai]` (già dichiarato nel `wrangler.toml`). **Non è necessario** attivare Telegram per questa API.
-3. Creare il segreto cifrato `AI_OFFICE_API_KEY` (almeno 24 caratteri, mai committarlo né scriverlo nei log).
+3. Creare il segreto cifrato `AI_OFFICE_API_KEY` (almeno 8 caratteri, anche con simboli; per maggiore sicurezza è consigliata una chiave casuale più lunga; mai committarla o stamparla nei log).
 4. Configurare `AI_OFFICE_ALLOWED_ORIGINS` con l'origine HTTPS esatta della preview pubblicata. La lista **non** usa `*`.
 5. In **Incarichi** nell'anteprima web: Verifica → incolla la chiave → Attiva → Genera bozza AI. La chiave viene eliminata dalla casella dopo l'attivazione ed è dimenticata al reload. Vengono trasmessi al Worker soltanto titolo, dettagli, ruolo e indicazioni della bozza richiesta.
 6. Verificare una vera risposta dal Worker pubblicato, oltre ai test con `env.AI.run` fittizio. Solo dopo questa prova dichiarare **motore AI operativo online**.
