@@ -114,8 +114,8 @@
    if(action==="unlock"){
      const input=$("aiEngineKey"),value=(input?.value||"").trim();
      if(input)input.value="";
-     if(!/^[A-Za-z0-9_-]{24,200}$/.test(value)){
-       bridge.toast("Chiave non valida: 24–200 caratteri alfanumerici, _ oppure -.");return;
+     if(!/^[\x21-\x7E]{8,200}$/.test(value)){
+       bridge.toast("Chiave non valida: minimo 8 caratteri (anche simboli), massimo 200; niente spazi.");return;
      }
      key=value;render();bridge.toast("Chiave conservata soltanto in memoria, fino alla chiusura della pagina.");return;
    }
