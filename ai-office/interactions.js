@@ -145,7 +145,7 @@
      record("Riunione «"+meeting.title+"» "+(meeting.status==="closed"?"conclusa dal direttore.":"annullata."));syncScene();return;
    }
    if(kind==="approve-request"&&request&&request.status==="proposed"){
-     if(!available().some(a=>a.id===request.to)&&!available().some(a=>a.id===request.from)){
+     if(!available().some(a=>a.id===request.to)||!available().some(a=>a.id===request.from)){
        bridge.toast("Partecipanti non disponibili.");return;
      }
      request.status="approved";record("Collaborazione approvata manualmente: "+request.topic);return;
