@@ -510,16 +510,22 @@ function animateActor(actor,delta,time){
       }
 
     }
-    if(actor.wait>actor.pauseSeconds && !reducedMotion.matches && performance.now()>actor.manualUntil){
+    if(actor.wait>actor.pauseSeconds && !actor.sessionMeeting && !reducedMotion.matches && performance.now()>actor.manualUntil){
       actor.routeIndex++;
       const nextZone=nextRoutine(actor.role,actor.point,actor.index,actor.routeIndex);
       moveToZone(actor,nextZone);
     }
     // People in meeting occasionally switch between listening and speaking.
-    if(actor.point==="meeting" && actor.gestureTimer>8+actor.index*2){
+    if(actor.point==="meeting" && !actor.sessionMeeting && actor.gestureTimer>8+actor.index*2){
       actor.gestureTimer=0;
       updateClip(actor,actor.state==="talk"?"idle":(actor.actions.talk?"talk":"idle"));
     }
+  }
+  // A real person explicitly directs which avatar gestures during the meeting.
+  // No spoken words or autonomous AI conversations are inferred here.
+  if(actor.sessionMeeting && actor.point==="meeting" && actor.state!=="walk"){
+    const requested=actor.sessionSpeaker&&actor.actions.talk?"talk":"idle";
+    if(actor.state!==requested)updateClip(actor,requested);
   }
   // Posture is applied *after* the mixer and locomotion, with stable quaternions.
   seatedPose(actor,delta,time);
@@ -547,6 +553,23 @@ function loop(){
   renderer.render(world,camera);
   info.frames++;
 }
+// Director-controlled group meeting positions and speaker gestures.
+info.setMeetingSession=({participants=[],speakerId=""}={})=>{
+  if(info.status!=="ready")return false;
+  const active=new Set(participants);
+  for(const actor of stagePeople.values()){
+    const was=!!actor.sessionMeeting;
+    actor.sessionMeeting=active.has(actor.id)&&!actor.closing;
+    actor.sessionSpeaker=actor.sessionMeeting&&speakerId===actor.id;
+    if(actor.sessionMeeting && !was && actor.goal!=="meeting"){
+      actor.manualUntil=performance.now()+30000;
+      moveToZone(actor,"meeting");
+    }
+    if(!actor.sessionMeeting && was && actor.goal==="meeting" && !actor.closing)
+      moveToZone(actor,"desk");
+  }
+  return true;
+};
 // User-triggered directions are only visual commands, never real AI tasks.
 info.command=(id,zone)=>{
   if(!["desk","meeting","lounge"].includes(zone)||info.status!=="ready")return false;
@@ -557,6 +580,7 @@ info.command=(id,zone)=>{
 };
 info.snapshot=()=>Array.from(stagePeople.values()).map(a=>({
   id:a.id,point:a.point,goal:a.goal,animation:a.state,closing:a.closing,
+  sessionMeeting:!!a.sessionMeeting,sessionSpeaker:!!a.sessionSpeaker,
   modelStyle:a.style,color:a.color,fingers:a.poseBones.finger.length,
   depthScale:Number(a.depthScale.toFixed(3)),shadowOpacity:Number(a.contactShadow.material.opacity.toFixed(2)),
   posture:a.seatedWeight>.75?"sitting":a.seatedWeight>.08?"transition":"standing",
