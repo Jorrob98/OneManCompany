@@ -134,6 +134,22 @@ test("8–10 printable-character operator passwords, including symbols, authenti
   }
 });
 
+test("studio assets on this same Worker origin use secure same-origin AI access",async()=>{
+  const sameOrigin=endpoint;
+  const env={...aiEnv(),AI_OFFICE_ALLOWED_ORIGINS:"",ASSETS:{fetch:async()=>new Response("ok")}};
+  const statusRes=await worker.fetch(new Request(endpoint+"/api/ai/status",{
+    headers:{Origin:sameOrigin}
+  }),env,ctx());
+  assert.equal(statusRes.status,200);
+  assert.equal((await statusRes.json()).ready,true);
+  const request=requestAI({title:"Prepara testo",details:"Prova",role:"Analista"},apiKey,sameOrigin);
+  const response=await worker.fetch(request,env,ctx());
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).kind,"text-draft");
+  const evilRequest=requestAI({title:"Test",details:"Non autorizzato"},apiKey,"https://evil.example");
+  assert.equal((await worker.fetch(evilRequest,env,ctx())).status,403);
+});
+
 test("AI preflight checks exact allowed origins and forbidden origins cannot infer",async()=>{
   const req=(origin)=>new Request(endpoint+"/api/ai/generate",{method:"OPTIONS",headers:{"Origin":origin}});
   assert.equal((await worker.fetch(req(aiOrigin),aiEnv(),ctx())).status,204);
