@@ -127,7 +127,7 @@ test("8–10 printable-character operator passwords, including symbols, authenti
     assert.equal(data.output,"Sintesi dal binding di prova");
     assert.equal(runs,1);
   }
-  for(const invalid of ["Ab9!*xy","has space", "abc\\ndefghi", "X".repeat(201)]){
+  for(const invalid of ["Ab9!*xy","has space", "abc"+String.fromCharCode(10)+"defghi", "X".repeat(201)]){
     const state=await (await worker.fetch(new Request(endpoint+"/api/ai/status"),
       {...aiEnv(),AI_OFFICE_API_KEY:invalid},ctx())).json();
     assert.equal(state.ready,false);
