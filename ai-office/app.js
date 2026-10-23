@@ -570,8 +570,17 @@ function scene(t){
  const s=iso(5.2,7.95);
  text("YOUR COMPANY, ALIVE",s[0],s[1]+28,12,"#f4e8d1aa","700");
 }
-let reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches,frameSkip=0;
-function loop(t){if(canvas.offsetParent!==null&&document.visibilityState!=="hidden"&&(!reduced||frameSkip++%30===0))scene(t);raf=requestAnimationFrame(loop);}
+let reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches,frameSkip=0,legacyFrames=0;
+function loop(t){
+ // The legacy 2D canvas is a fallback. Never render it behind the active 3D
+ // WebGL office: otherwise the hidden Canvas2D consumes a second render budget.
+ const real3d=canvas.closest(".scene-wrap")?.classList.contains("real3d-active");
+ if(!real3d&&canvas.offsetParent!==null&&document.visibilityState!=="hidden"&&
+   (!reduced||frameSkip++%30===0)){
+   scene(t);legacyFrames++;
+ }
+ raf=requestAnimationFrame(loop);
+}
 canvas.addEventListener("click",event=>{
  const r=canvas.getBoundingClientRect();
  const x=(event.clientX-r.left-offX)/scale,y=(event.clientY-r.top-offY)/scale;
@@ -584,6 +593,8 @@ $("roomMood").addEventListener("click",()=>{const modes=["evening","day","night"
 window.addEventListener("resize",resizeCanvas);
 if("ResizeObserver" in window)new ResizeObserver(resizeCanvas).observe(canvas);
 window.AIOStudio={
+ getLegacyRenderStats:()=>({frames:legacyFrames,real3dActive:Boolean(
+   canvas.closest(".scene-wrap")?.classList.contains("real3d-active"))}),
  getAgents:()=>state.agents,getTasks:()=>state.tasks.map(t=>({...t})),refresh:renderAll,
  getSelected:()=>state.selected,getMood:()=>state.mood,
  openModal:(title,contents)=>openModal(title,contents),closeModal,toast,
