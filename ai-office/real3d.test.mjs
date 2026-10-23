@@ -69,6 +69,58 @@ try {
   await page.waitForTimeout(450);
   await page.screenshot({path:"ai-office/office-real3d-desktop.png"});
   await page.locator(".scene-wrap").screenshot({path:"ai-office/office-real3d-scene.png"});
+  // Debug gate 1: no false arrival while a seated GLB is still standing up.
+  const departure=await page.evaluate(()=>{
+    const ok=window.AIOAgents3D.command("a1","meeting");
+    const actor=window.AIOAgents3D.snapshot().find(x=>x.id==="a1");
+    return {ok,actor};
+  });
+  assert.equal(departure.ok,true,"Agent command was not accepted");
+  assert.equal(departure.actor.goal,"meeting");
+  assert.equal(departure.actor.point,"desk",
+    "Agent falsely arrived in meeting before walking");
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot()
+    .some(a=>a.id==="a1"&&a.point==="meeting"),null,{timeout:20000});
+  const arrived=await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1"));
+  assert.equal(arrived.point,"meeting");
+  assert.ok(arrived.sittingBlend<.2,"Agent is still seated in the meeting room");
+  assert.ok(await page.evaluate(()=>window.AIOAgents3D.command("a1","desk")));
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot()
+    .some(a=>a.id==="a1"&&a.point==="desk"&&a.sittingBlend>.90),
+    null,{timeout:20000});
+  // Debug gate 2: removing/reinstating personnel cannot leave invisible GLB
+  // meshes selectable, nor duplicate the actor. Mutate only this isolated test.
+  const beforeRoster=await page.evaluate(()=>window.AIOOffice3D.pickableMeshes);
+  await page.evaluate(()=>{
+    window.AIOStudio.getAgents().find(a=>a.id==="a4").status="retired";
+    window.AIOStudio.refresh();
+  });
+  await page.waitForFunction(()=>window.AIOOffice3D.agents.length===3);
+  const removedState=await page.evaluate(()=>({
+    count:window.AIOOffice3D.agents.length,
+    pickables:window.AIOOffice3D.pickableMeshes,
+    removed:window.AIOAgents3D.snapshot().some(a=>a.id==="a4")
+  }));
+  assert.equal(removedState.removed,false,"Retired GLB remains in scene");
+  assert.ok(removedState.pickables<beforeRoster,
+    "Retired GLB's raycast targets were retained");
+  await page.evaluate(()=>{
+    window.AIOStudio.getAgents().find(a=>a.id==="a4").status="available";
+    window.AIOStudio.refresh();
+  });
+  await page.waitForFunction(()=>window.AIOOffice3D.agents.length===4);
+  const restoredState=await page.evaluate(()=>({
+    ids:window.AIOAgents3D.snapshot().map(a=>a.id),
+    pickables:window.AIOOffice3D.pickableMeshes
+  }));
+  assert.equal(new Set(restoredState.ids).size,4,"Duplicate GLB character after rehiring");
+  assert.equal(restoredState.pickables,beforeRoster,
+    "GLB pickables leaked or failed to re-register on rehire");
+  console.log("3D movement & GLB lifecycle debug PASS",JSON.stringify({
+    from:departure.actor.point,to:arrived.point,
+    removedMeshes:beforeRoster-removedState.pickables,
+    restoredMeshes:restoredState.pickables
+  }));
   await page.setViewportSize({width:390,height:844});
   await sleep(300);
   assert.equal(await page.locator(".office3d-canvas").count(),1);
