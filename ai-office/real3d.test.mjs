@@ -30,6 +30,13 @@ try {
   assert.equal(await page.locator(".office3d-canvas").count(),1,"Physical 3D scene missing");
   assert.equal(await page.locator("#penthouseStage").evaluate(e=>getComputedStyle(e).display),
     "none","Old 2.5D photograph is still showing over the office geometry");
+  // The invisible legacy 2D canvas must STOP consuming frames while 3D is live.
+  const legacyStart=await page.evaluate(()=>window.AIOStudio.getLegacyRenderStats());
+  assert.equal(legacyStart.real3dActive,true);
+  await page.waitForTimeout(300);
+  const legacyEnd=await page.evaluate(()=>window.AIOStudio.getLegacyRenderStats());
+  assert.equal(legacyEnd.frames,legacyStart.frames,
+    "Hidden legacy Canvas2D is still redrawing behind active Three.js");
   const data=await page.evaluate(()=>({
     agents:window.AIOOffice3D.agents,
     geometry:window.AIOOffice3D.engine,
