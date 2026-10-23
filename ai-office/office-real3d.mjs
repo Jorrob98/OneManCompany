@@ -612,7 +612,10 @@ function animate(t){
  const interval=1000/info.targetFps;
  if(prev && t-prev<interval*.88)return;
  const elapsed=prev?t-prev:interval;
- const dt=Math.min(.05,elapsed/1000);prev=t;
+ // Rendering/rigging stay capped, but navigation uses elapsed wall time:
+ // under a slow GPU a worker must not take minutes to cross the same room.
+ const motionDt=Math.min(.25,elapsed/1000);
+ const dt=Math.min(.05,motionDt);prev=t;
  actualFrames++;
  if(actualFrames%18===0)info.fps=Math.round(1000/Math.max(1,elapsed));
  const budget=info.targetFps===30?38:25;
@@ -633,7 +636,7 @@ function animate(t){
      a.goal==="meeting"?new THREE.Vector3(1+a.index*.8,0,-1.65):
        new THREE.Vector3(-5.5+a.index*.45,0,-.5);
    const walking=a.g.position.distanceTo(dest)>.05;
-   a.sit=THREE.MathUtils.damp(a.sit,!walking&&a.goal==="desk"?1:0,3.5,dt);
+   a.sit=THREE.MathUtils.damp(a.sit,!walking&&a.goal==="desk"?1:0,3.5,motionDt);
    const canWalk=walking&&a.sit<.10;
    if(canWalk!==a.wasWalking){
      if(canWalk){a.walk.reset().play();a.walk.crossFadeFrom(a.idle,.22,false);}
@@ -659,7 +662,7 @@ function animate(t){
      }
    }
    if(canWalk){
-     a.g.position.lerp(dest,Math.min(.12,dt*2.1));
+     a.g.position.lerp(dest,1-Math.exp(-2.1*motionDt));
      if(a.g.position.distanceTo(dest)<.05){a.g.position.copy(dest);a.point=a.goal;}
    }else if(!walking){
      // A seated agent must first stand up, then walk; never claim it has
@@ -671,7 +674,7 @@ function animate(t){
    a.halo.visible=id===selected;
  }
  // Damped camera motion prevents abrupt cuts when changing view or using touch.
- const blend=1-Math.exp(-7.5*dt);
+ const blend=1-Math.exp(-7.5*motionDt);
  camera.position.lerp(cameraDestination,blend);
  cameraLookAt.lerp(target,blend);
  camera.lookAt(cameraLookAt);
