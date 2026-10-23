@@ -520,6 +520,8 @@ function resize(){
  slowFrames=0;qualityWindow=performance.now();
  if(lastMobile!==mobile){
    lastMobile=mobile;
+   frameIntervals.length=0;
+   info.metrics=null;
    // Mobile starts on people, not a tiny overhead dollhouse.
    cameraPreset(mobile?1:0);
  }
