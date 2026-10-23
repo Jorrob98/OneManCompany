@@ -169,7 +169,7 @@ function trellis(x,z){
  for(let i=0;i<4;i++)pot(x+i*.28,z+(i%2)*.12,.7+(i%3)*.2);
 }
 function lounge(){
- carpet(-6.35,-1.9,5.5,4.0,0x565355);
+ carpet(-6.35,-1.9,5.5,4.0,0x9b9b91);
  // L-shaped contemporary sofa
  box(root,-6.8,.43,-2.12,3.8,.75,.96,linen);
  box(root,-8.2,.45,-1.2,.9,.8,2.35,linen);
@@ -223,7 +223,7 @@ function chair(x,z,rotation=0){
  return grp;
 }
 function deskPods(){
- carpet(-3.0,3.25,10.9,5.4,0x44454b);
+ carpet(-3.0,3.25,10.9,5.4,0x71827e);
  const locations=[[-6.3,2.15,0],[-2.95,2.15,0],[.55,2.15,0],[-5.05,5.05,0],[-1.40,5.05,0],[2.15,5.05,0]];
  for(const [x,z,rot] of locations){
    desk(x,z,rot,.9);chair(x,z+1.36);
@@ -238,7 +238,7 @@ function deskPods(){
 }
 function meeting(){
  const x=1.5,z=-3.35;
- carpet(x,z,6.4,4.8,0x484a50);
+ carpet(x,z,6.4,4.8,0x85918f);
  // privacy glass meeting suite (thin glass with metal structure).
  const glass=new THREE.MeshPhysicalMaterial({color:0x7aa0b8,metalness:.16,roughness:.08,transparent:true,opacity:.15,side:THREE.DoubleSide,depthWrite:false});
  // front transparent glass, left and right walls
@@ -395,6 +395,38 @@ window.AIOAgents3D={
  })),
  setMeetingSession:()=>true
 };
+// Merge identical static box meshes with InstancedMesh after all furniture
+// is constructed. World matrices preserve nested desk rotations/scales.
+// Transparent meshes and moving GLBs stay untouched, maintaining correct order.
+function batchFurniture(){
+  root.updateMatrixWorld(true);
+  const buckets=new Map();
+  root.traverse(o=>{
+    if(!o.isMesh || o.geometry!==unitBox || o.material.transparent)return;
+    const k=o.material.uuid+":"+String(o.castShadow)+":"+String(o.receiveShadow);
+    if(!buckets.has(k))buckets.set(k,[]);
+    buckets.get(k).push(o);
+  });
+  let objects=0,batches=0;
+  for(const bucket of buckets.values()){
+    if(bucket.length<2)continue;
+    const first=bucket[0];
+    const merged=new THREE.InstancedMesh(unitBox,first.material,bucket.length);
+    merged.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    merged.castShadow=first.castShadow;
+    merged.receiveShadow=first.receiveShadow;
+    merged.frustumCulled=false; // matrices use world coordinates across room
+    bucket.forEach((o,i)=>{
+      merged.setMatrixAt(i,o.matrixWorld);
+      o.parent.remove(o);
+    });
+    merged.instanceMatrix.needsUpdate=true;
+    root.add(merged);
+    batches++;
+    objects+=bucket.length;
+  }
+  info.batching={sourceMeshes:objects,drawBatches:batches};
+}
 function selectAgent(id){
  bridge.select(id);syncPeople();
 }
@@ -429,7 +461,7 @@ function cameraPreset(mode){
  cameraMode=mode;
  info.cameraMode=["panoramica","postazioni","dipendente"][mode];
  if(mode===0){target.set(0,1.15,0);distance=27;elevation=.60;}
- else if(mode===1){target.set(-2.9,1.05,3.45);distance=16.5;elevation=.53;}
+ else if(mode===1){target.set(-2.9,1.05,3.45);distance=lastMobile?12.6:14.7;elevation=.49;}
  else{
    const a=agents.get(selected)||agents.values().next().value;
    target.set(a?.g.position.x??-2.9,1.1,a?.g.position.z??3.5);
@@ -441,7 +473,7 @@ function resize(){
  const rect=mount.getBoundingClientRect();
  if(!rect.width||!rect.height||!renderer)return;
  const w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
- camera.aspect=w/h;camera.fov=w<660?48:38;camera.updateProjectionMatrix();
+ camera.aspect=w/h;camera.fov=w<660?43:38;camera.updateProjectionMatrix();
  const mobile=w<660;
  info.quality=mobile?"mobile":"desktop";
  info.targetFps=mobile||reducedMotion.matches?30:60;
@@ -553,7 +585,7 @@ function animate(t){
  if(t-qualityWindow>4000){
    qualityWindow=t;
    const max=info.quality==="mobile"?1.24:1.65;
-   const next=slowFrames>22?Math.max(.85,qualityPixels-.15):
+   const next=slowFrames>22?Math.max(info.quality==="mobile"?.95:1,qualityPixels-.15):
      slowFrames<5?Math.min(max,qualityPixels+.08):qualityPixels;
    if(Math.abs(next-qualityPixels)>.03){
      qualityPixels=Number(next.toFixed(2));
@@ -636,6 +668,7 @@ async function boot(){
   neonWarm.emissiveIntensity=.045;neonBlue.emissiveIntensity=.08;
   neonPurple.emissiveIntensity=.04;
   createShell();deskPods();lounge();meeting();
+  batchFurniture();
   await preloadHumans();
   syncPeople();setMood(bridge.getMood());cameraUpdate();
   mount.insertBefore(renderer.domElement,original);
