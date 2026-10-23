@@ -53,7 +53,17 @@ Non cancellare dati reali, non inviare credenziali nei log, non indebolire auten
 | --- | --- |
 | Piano salvato nel repository | Eseguito |
 | Baseline precedente del deploy (grafica) | `d39d96eb20919e0e15ad100f0b5013d05d1bea4d` verificato dalla CI passata; ricontrollare SHA corrente prima di ogni report |
-| Fase 1/2: controlli del percorso e raccolta risorse stale | In lavorazione; non dichiarare PASS prima della CI |
-| Fasi 3–8 | Aperte |
+| Fase 1: osservabilità base | In corso: contatori reali di frame, percentili p50/p95 e rendering 2D superfluo disattivato; test browser della telemetria estesa ancora da certificare |
+| Fase 2: spostamento e lifecycle GLB | Correzione P0 implementata; test browser PASS run `40037930120` (scrivania→riunione→scrivania, pensionamento/riassunzione, raycast mesh stale) |
+| Fasi 3–8 | Aperte: nessun 100% dichiarato |
+
+### Ripresa del 24/10/2026 — evidenze tecniche
+
+- L'ultimo test precedente era FAIL per timeout di 20s nello spostamento fra zone, su Chrome software WebGL. Bug legato all'utilizzo di `dt` troppo limitato (`0.05`) e alla velocità di traslazione proporzionale al numero di frame.
+- **Corretto:** `office-real3d.mjs` ora utilizza `motionDt` separato per navigazione, camera e fase seduta; non dichiara più l'arrivo anticipato; riusa promesse GLB e pulisce mesh di picking alla rimozione.
+- **Prova superata:** GitHub Actions Studio UI `40037930120` **PASS**, percorso completo e test di pensionamento/riassunzione; Worker deploy `40037924397` **PASS**, commit pubblico `4cf4f40095499fb48074c4a5b39a5f197f35dd3f`.
+- **Profilazione in verifica:** nuovi contatori `window.AIOOffice3D.metrics` (FPS osservati dalla cadenza di rendering del browser, p50/p95 degli intervalli, campioni, DPR, qualità). Si tratta di osservazione del `requestAnimationFrame`, **non** di misura del tempo GPU e **non** di un benchmark su iPhone fisico.
+- **Test aggiunto:** `real3d.test.mjs` verifica l'esistenza e la coerenza dei dati di profilo. Ultimo commit sorgente di questo aggiornamento `d5ee160f16de266ffe24ae2df69095aa45b51f30`; a questo punto esito della nuova CI/deploy da confermare, non dichiarare pubblicato senza lettura `preview-version.json`.
+- **Problemi ancora aperti:** collisioni/navmesh, clip della seduta e mani, drift camera su mobile, FPS reali su hardware, Worker inferenza AI autorizzata, salvataggio cloud/sync.
 
 **Report per ogni modifica:** 1 problema, 1 causa, file modificati, commit, test PASS/FAIL, screenshot, **link preview** e esatta revisione online. Se codice commit ma non deploy, scrivere "preview precedente". Nessuna percentuale inventata.
