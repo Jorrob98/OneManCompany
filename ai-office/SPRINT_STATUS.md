@@ -189,6 +189,17 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Limitazioni residue reali:** percorso degli avatar verso altre aree non usa ancora navmesh/collisioni complete; digitazione/IK mani e transizione seduta/alzata richiedono ulteriore rifinitura; la preview mobile ha margini di miglioramento; il modello AI Worker è `ready=true` ma **inferenza reale autorizzata non verificata**; dati applicativi ancora soltanto browser e Telegram/sync cloud incompleti.
 - **Regola:** test PASS geometrico ≠ qualità visiva perfetta; non dichiarare progetto al 100%. Ogni aggiornamento deve includere link preview, SHA pubblicato e stato CI.
 
+### 24/10/2026 — qualità grafica e fluidità (ottimizzazione verificata)
+
+- **Codice realmente modificato:** `ai-office/office-real3d.mjs` senza ricreare il progetto o alterare il runtime Python e la gestione incarichi.
+- **Look:** luce più naturale, pareti neutre, finiture legno/salvia e tappeti schiariti; ombre direzionali ammorbidite, intensità dei fari ridotta, riflessi e neon meno invasivi.
+- **GPU:** geometria cubica condivisa, più box statici accorpati mediante `THREE.InstancedMesh` con trasformazioni mondiali preservate. Draw call Chrome CI screenshot: **420 prima → 320 dopo** (−100, circa −24%). 208 geometrie GPU riportate nell'ultimo test.
+- **Rendering:** camera fluida con damping, controlli orbitali, pinch a due dita, zoom e inquadratura ravvicinata desktop/iPhone. Frame pacing target 60 desktop e 30 smartphone, DPR dinamico per carico persistente con soglia minima 1 desktop/.95 mobile, ombre costose disattivate su viewport piccoli; evitare promesse di FPS reali senza prova su hardware.
+- **QA:** `ai-office/real3d.test.mjs` esteso con budget pixel ratio, geometrie e focus interattivo; `AI Office Studio UI` run `40035968772` **PASS** (vecchio fallback e nuova scena desktop/mobile); `AI Office Cloudflare Deploy` run `40035968766` **PASS**, incluso test sedia/bacino reale e verifica commit online.
+- **Preview pubblica:** https://ai-office-api.jorrob98.workers.dev/ — build online **`d39d96eb20919e0e15ad100f0b5013d05d1bea4d`**, confermata da GitHub Actions su `/preview-version.json`.
+- **Screenshot visivamente ispezionati:** `office-real3d-scene.png`, `office-real3d-desktop.png`, `office-real3d-mobile.png`. L'ambiente è più chiaro, più leggibile e senza foto 2.5D in primo piano. Restano visibili dettagli poco realistici degli avatar e una parte dell'arredo può essere parzialmente tagliata nelle viste ravvicinate.
+- **Limiti:** non certificati FPS/hardware iPhone reale, animazioni realistiche delle mani e delle gambe non concluse, niente navmesh/collisioni complete, nessuna inferenza AI online autentica provata, dati ancora principalmente nel browser. Non dichiarare il 100%.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
