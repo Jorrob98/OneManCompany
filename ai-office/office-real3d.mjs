@@ -461,33 +461,57 @@ function pointXY(event){
  const r=renderer.domElement.getBoundingClientRect();
  return new THREE.Vector2(((event.clientX-r.left)/r.width)*2-1,-((event.clientY-r.top)/r.height)*2+1);
 }
-function pointerDown(e){dragging=true;startX=lastX=e.clientX;startY=lastY=e.clientY;dragDistance=0;renderer.domElement.setPointerCapture(e.pointerId);}
+const activePointers=new Map();
+let previousPinch=null;
+function pointerDown(e){
+ activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ dragging=true;startX=lastX=e.clientX;startY=lastY=e.clientY;dragDistance=0;
+ if(activePointers.size>1){dragDistance=999;previousPinch=null;}
+ renderer.domElement.setPointerCapture(e.pointerId);
+}
 function pointerMove(e){
+ if(!activePointers.has(e.pointerId))return;
+ activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(activePointers.size===2){
+   const [a,b]=[...activePointers.values()];
+   const pinch=Math.hypot(a.x-b.x,a.y-b.y);
+   if(previousPinch&&pinch>8){
+     distance=THREE.MathUtils.clamp(distance*previousPinch/pinch,9,38);
+     cameraUpdate();
+   }
+   previousPinch=pinch;dragDistance=999;
+   return;
+ }
  if(!dragging)return;
  const dx=e.clientX-lastX,dy=e.clientY-lastY;
  dragDistance+=Math.abs(dx)+Math.abs(dy);
  if(dragDistance>2){
- azimuth=THREE.MathUtils.clamp(azimuth-dx*.006,.46,1.34);
- elevation=THREE.MathUtils.clamp(elevation+dy*.004,.43,1.1);cameraUpdate();
+   azimuth=THREE.MathUtils.clamp(azimuth-dx*.006,.46,1.34);
+   elevation=THREE.MathUtils.clamp(elevation+dy*.004,.43,1.1);
+   cameraUpdate();
  }
  lastX=e.clientX;lastY=e.clientY;
 }
 function pointerUp(e){
- if(dragging&&dragDistance<12){
- raycaster.setFromCamera(pointXY(e),camera);
- const list=raycaster.intersectObjects(interactive,false);
- if(list.length){
-   const id=list[0].object.userData.agentId;
-   if(id)selectAgent(id);
+ const single=activePointers.size===1;
+ activePointers.delete(e.pointerId);
+ if(single&&dragging&&dragDistance<12){
+   raycaster.setFromCamera(pointXY(e),camera);
+   const list=raycaster.intersectObjects(interactive,false);
+   if(list.length){
+     const id=list[0].object.userData.agentId;
+     if(id)selectAgent(id);
+   }
  }
- }
- dragging=false;
+ dragging=false;previousPinch=null;
 }
 function hookup(){
  renderer.domElement.addEventListener("pointerdown",pointerDown);
  renderer.domElement.addEventListener("pointermove",pointerMove);
  renderer.domElement.addEventListener("pointerup",pointerUp);
- renderer.domElement.addEventListener("pointercancel",()=>{dragging=false;});
+ renderer.domElement.addEventListener("pointercancel",e=>{
+   activePointers.delete(e.pointerId);dragging=false;previousPinch=null;
+ });
  renderer.domElement.addEventListener("wheel",e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.015,9,38);cameraUpdate();},{passive:false});
  document.getElementById("roomZoom").addEventListener("click",()=>{
    cameraPreset((cameraMode+1)%3);
@@ -582,6 +606,13 @@ function animate(t){
  camera.lookAt(cameraLookAt);
  renderer.render(scene,camera);
  info.frames++;
+ if(info.frames%24===0){
+   info.renderStats={
+     drawCalls:renderer.info.render.calls,
+     triangles:renderer.info.render.triangles,
+     gpuGeometries:renderer.info.memory.geometries
+   };
+ }
 }
 async function boot(){
  try{
