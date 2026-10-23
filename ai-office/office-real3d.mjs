@@ -16,14 +16,23 @@ window.AIOOffice3D=info;
 const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const modelPaths={f1:"business-female-01",f2:"business-female-02",f3:"business-female-03",f4:"business-female-04",
   m1:"business-male-01",m2:"business-male-02",m3:"business-male-03",m4:"business-male-04"};
-const models=new Map(),clips={};
+const models=new Map(),pendingModels=new Map(),clips={};
 const rootURL="https://models.codelove.in";
+function ensureModel(style){
+ if(models.has(style))return Promise.resolve(models.get(style));
+ if(!modelPaths[style])return Promise.reject(new Error("Unknown GLB model style"));
+ if(!pendingModels.has(style)){
+   const promise=loader.loadAsync(rootURL+"/models/"+modelPaths[style]+".glb")
+     .then(glb=>{models.set(style,glb.scene);return glb.scene;})
+     .finally(()=>pendingModels.delete(style));
+   pendingModels.set(style,promise);
+ }
+ return pendingModels.get(style);
+}
 async function preloadHumans(){
   const people=bridge.getAgents().filter(a=>a.status==="available").slice(0,4);
   const keys=[...new Set(people.map((a,i)=>modelPaths[a.modelStyle]?a.modelStyle:["f1","m1","f2","m2"][i]))];
-  await Promise.all(keys.map(async key=>{
-    models.set(key,(await loader.loadAsync(rootURL+"/models/"+modelPaths[key]+".glb")).scene);
-  }));
+  await Promise.all(keys.map(key=>ensureModel(key)));
   await Promise.all(["f","m"].map(async sex=>{
     const a=await loader.loadAsync(rootURL+"/animations/"+sex+"_idle_neutral_01.glb");
     const w=await loader.loadAsync(rootURL+"/animations/"+sex+"_walk_neutral_01.glb");
@@ -354,24 +363,50 @@ function person(a,index){
  agents.set(a.id,{g,body,mixer,idle,walk,wasWalking:false,limbs,label,halo,baseY:body.position.y,
    seatY:.79,index,slot:{x,z},modelStyle:key,point:"desk",goal:"desk",sit:0});
 }
+function detachAgent(id){
+ const a=agents.get(id);
+ if(!a)return;
+ a.mixer.stopAllAction();
+ a.mixer.uncacheRoot(a.body);
+ // GLB geometry/material are shared with cached templates; only free per-agent
+ // labels, markers and their textures, never those GLB shared assets.
+ const removed=new Set();
+ a.body.traverse(o=>{if(o.isMesh)removed.add(o);});
+ for(let i=interactive.length-1;i>=0;i--){
+   if(removed.has(interactive[i]))interactive.splice(i,1);
+ }
+ if(a.label.material.map)a.label.material.map.dispose();
+ a.label.material.dispose();a.label.geometry.dispose();
+ a.halo.material.dispose();a.halo.geometry.dispose();
+ agency.remove(a.g);agents.delete(id);
+}
 function syncPeople(){
  const list=bridge.getAgents().filter(a=>a.status==="available").slice(0,4);
  const ids=new Set(list.map(x=>x.id));
- for(const [id,a] of agents)if(!ids.has(id)){
-   a.mixer.stopAllAction();agency.remove(a.g);agents.delete(id);
- }
+ for(const id of agents.keys())if(!ids.has(id))detachAgent(id);
  list.forEach((a,i)=>{
    const actor=agents.get(a.id);
-   if(actor&&actor.modelStyle===a.modelStyle)return;
-   if(actor){actor.mixer.stopAllAction();agency.remove(actor.g);agents.delete(a.id);}
+   if(actor&&actor.modelStyle===a.modelStyle){
+     // Rebind seats when the roster order changes after vacation/retirement.
+     actor.index=i;
+     const [x,z]=seats[i%seats.length];
+     if(actor.slot.x!==x||actor.slot.z!==z)actor.slot={x,z};
+     return;
+   }
+   if(actor)detachAgent(a.id);
    if(!models.has(a.modelStyle)){
-     loader.loadAsync(rootURL+"/models/"+modelPaths[a.modelStyle]+".glb")
-       .then(m=>{models.set(a.modelStyle,m.scene);syncPeople()});
+     ensureModel(a.modelStyle).then(()=>syncPeople()).catch(error=>{
+       info.modelWarning="A selected 3D character failed to load";
+       console.warn("AI OFFICE optional model unavailable",error?.name||"load-error");
+     });
    }else person(a,i);
  });
  selected=bridge.getSelected();
  for(const [id,a] of agents){a.halo.visible=id===selected;a.label.visible=id===selected;}
  info.agents=[...agents.keys()];
+ info.pickableMeshes=interactive.length;
+ info.pendingModelLoads=pendingModels.size;
+ window.AIOAgents3D.agents=info.agents.slice();
 }
 info.rigContact=(id)=>{
  const a=agents.get(id);
@@ -626,7 +661,11 @@ function animate(t){
    if(canWalk){
      a.g.position.lerp(dest,Math.min(.12,dt*2.1));
      if(a.g.position.distanceTo(dest)<.05){a.g.position.copy(dest);a.point=a.goal;}
-   }else a.point=a.goal;
+   }else if(!walking){
+     // A seated agent must first stand up, then walk; never claim it has
+     // reached the next room while it is still blending out of the chair.
+     a.point=a.goal;
+   }
    a.label.quaternion.copy(camera.quaternion);
    a.label.visible=id===selected;
    a.halo.visible=id===selected;
