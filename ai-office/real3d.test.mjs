@@ -48,11 +48,40 @@ try {
   assert.ok(joints.hips.every(y=>Math.abs(y-joints.seatY)<.10),
     "Pelvis is not contacting the 3D chair: "+JSON.stringify(joints));
   console.log("Real-geometry seated pose joint heights",JSON.stringify(joints));
+  await page.waitForFunction(()=>window.AIOOffice3D?.renderStats?.gpuGeometries>0,
+    null,{timeout:10000});
+  const desktopPerf=await page.evaluate(()=>({
+    tier:window.AIOOffice3D.quality,
+    fpsBudget:window.AIOOffice3D.targetFps,
+    pixelRatio:window.AIOOffice3D.renderPixelRatio,
+    renderer:window.AIOOffice3D.renderStats
+  }));
+  assert.equal(desktopPerf.tier,"desktop");
+  assert.equal(desktopPerf.fpsBudget,60);
+  assert.ok(desktopPerf.pixelRatio>0&&desktopPerf.pixelRatio<=1.65,
+    "Desktop renderer pixel budget not controlled: "+JSON.stringify(desktopPerf));
+  assert.ok(desktopPerf.renderer.gpuGeometries<800,
+    "Too many unique geometries; shared GPU box reuse regressed: "+JSON.stringify(desktopPerf));
+  console.log("Desktop real-3D renderer budget",JSON.stringify(desktopPerf));
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.evaluate(()=>window.AIOOffice3D.cameraMode),"postazioni",
+    "Camera focus preset is not interactive");
+  await page.waitForTimeout(450);
   await page.screenshot({path:"ai-office/office-real3d-desktop.png"});
   await page.locator(".scene-wrap").screenshot({path:"ai-office/office-real3d-scene.png"});
   await page.setViewportSize({width:390,height:844});
-  await sleep(250);
+  await sleep(300);
   assert.equal(await page.locator(".office3d-canvas").count(),1);
+  const mobilePerf=await page.evaluate(()=>({
+    tier:window.AIOOffice3D.quality,
+    fpsBudget:window.AIOOffice3D.targetFps,
+    pixelRatio:window.AIOOffice3D.renderPixelRatio
+  }));
+  assert.equal(mobilePerf.tier,"mobile");
+  assert.equal(mobilePerf.fpsBudget,30);
+  assert.ok(mobilePerf.pixelRatio>0&&mobilePerf.pixelRatio<=1.24,
+    "Mobile GPU pixel budget not enforced: "+JSON.stringify(mobilePerf));
+  console.log("Mobile real-3D renderer budget",JSON.stringify(mobilePerf));
   const bounds=await page.evaluate(()=>({
     pageWidth:document.documentElement.scrollWidth,
     viewport:innerWidth,
