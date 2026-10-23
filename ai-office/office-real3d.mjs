@@ -10,7 +10,8 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { clone as cloneRig } from "three/addons/utils/SkeletonUtils.js";
 
 const bridge=window.AIOStudio;
-const info={status:"loading",engine:"real-geometry-glb",frames:0,agents:[]};
+const info={status:"loading",engine:"real-geometry-glb",frames:0,agents:[],
+  quality:"desktop",targetFps:60,renderPixelRatio:1,fps:0,cameraMode:"panoramica"};
 window.AIOOffice3D=info;
 const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const modelPaths={f1:"business-female-01",f2:"business-female-02",f3:"business-female-03",f4:"business-female-04",
@@ -46,6 +47,7 @@ const target=new THREE.Vector3(0,1.15,0);
 const colors={ink:0x111827,stone:0x27303d,slate:0x384352,wood:0x9a6a50,woodLight:0xc3926b,
  copper:0xe9a16a,glass:0x6c9db8,blue:0x4189d9,cyan:0x65e1df,violet:0x9a8cf1,cream:0xffe3b7};
 const mat=(c,roughness=.63,metalness=.02)=>new THREE.MeshStandardMaterial({color:c,roughness,metalness});
+const unitBox=new THREE.BoxGeometry(1,1,1); // shared GPU geometry for architectural boxes
 const dark=mat(0x151c27,.57,.32),darker=mat(0x0b111a,.62,.28),metal=mat(0x343f4a,.39,.78),
 chrome=mat(0x8b9aa4,.27,.85),wood=mat(colors.wood,.7),woodPale=mat(colors.woodLight,.72),floorMat=mat(0x292f39,.2,.35),
 sand=mat(0x77736c,.86),linen=mat(0x65717a,.96),warm=mat(0xe3b57f,.8),
@@ -56,7 +58,8 @@ function add(parent,object,x=0,y=0,z=0){
  object.position.set(x,y,z);parent.add(object);return object;
 }
 function box(parent,x,y,z,w,h,d,material,shadow=true){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+ const m=new THREE.Mesh(unitBox,material);
+ m.scale.set(w,h,d);
  m.position.set(x,y,z);m.castShadow=shadow;m.receiveShadow=true;parent.add(m);return m;
 }
 function cylinder(parent,x,y,z,rTop,rBottom,height,material,sides=16){
@@ -130,7 +133,7 @@ function carpet(x,z,w,d,c=0x525b5e){
  box(root,x,.167,z,w-.1,.009,d-.1,mat(c,.94),false);
 }
 function createShell(){
- const floor=mat(0xc4c9c4,.96),wall=mat(0xe9ebe5,.95),edge=mat(0x9ea9ab,.75);
+ const floor=mat(0xd7d5cd,.93),wall=mat(0xf3f0ea,.94),edge=mat(0xaeb7b3,.82);
  box(root,0,-.22,0,19.6,.42,14.8,wall,false);
  box(root,0,.035,0,19.2,.09,14.4,floor,false);
  for(let x=-9;x<9;x+=1.75)box(root,x,.087,0,.012,.009,14.4,edge,false);
@@ -396,16 +399,17 @@ function selectAgent(id){
  bridge.select(id);syncPeople();
 }
 function lights(){
- scene.add(new THREE.AmbientLight(0xa2b2d6,1.02));
- const hemi=new THREE.HemisphereLight(0xc9deec,0x554335,1.45);scene.add(hemi);
- const sun=new THREE.DirectionalLight(0xffe1c5,3.0);
+ scene.add(new THREE.AmbientLight(0xf0f5f1,.62));
+ const hemi=new THREE.HemisphereLight(0xf3f6ef,0xaeb2a7,1.25);scene.add(hemi);
+ const sun=new THREE.DirectionalLight(0xfff3e3,2.15);
  sun.position.set(-7,13,9);sun.castShadow=true;
- sun.shadow.mapSize.set(2048,2048);
+ sun.shadow.mapSize.set(1024,1024);
+ sun.shadow.radius=3;
  sun.shadow.camera.left=-13;sun.shadow.camera.right=13;sun.shadow.camera.top=14;sun.shadow.camera.bottom=-14;
- sun.shadow.normalBias=.07;sun.shadow.bias=-.00015;scene.add(sun);
- const key=new THREE.PointLight(0xffbf88,34,13,1.6);key.position.set(1.5,3.1,-3.3);scene.add(key);
- const accent=new THREE.PointLight(0x659bff,30,12,1.7);accent.position.set(7,2.5,-4.8);scene.add(accent);
- const loungeLight=new THREE.PointLight(0xffd0a6,22,11,1.6);loungeLight.position.set(-5,2.9,-2.5);scene.add(loungeLight);
+ sun.shadow.normalBias=.035;sun.shadow.bias=-.00013;scene.add(sun);
+ const key=new THREE.PointLight(0xffeddb,5,12,2);key.position.set(1.5,3.1,-3.3);scene.add(key);
+ const accent=new THREE.PointLight(0xd2e7ef,3,12,2);accent.position.set(7,2.5,-4.8);scene.add(accent);
+ const loungeLight=new THREE.PointLight(0xffe9d8,4,12,2);loungeLight.position.set(-5,2.9,-2.5);scene.add(loungeLight);
  return {sun,key,accent,loungeLight,hemi};
 }
 function cameraUpdate(){
@@ -486,13 +490,15 @@ function hookup(){
 }
 let illumination;
 function setMood(mood){
- night=mood!=="day";
- scene.background=new THREE.Color(night?0xc0cbd0:0xe1e8e8);
- illumination.sun.intensity=night?1.85:2.30;
- illumination.accent.intensity=night?4:2;
- illumination.key.intensity=night?7:4;
- illumination.loungeLight.intensity=night?5:3;
- renderer.toneMappingExposure=night?1.05:1.10;
+ night=mood==="night"||mood==="evening";
+ const background=night?0xc8d5d8:0xeaf1ed;
+ scene.background.setHex(background);
+ scene.fog.color.setHex(background);
+ illumination.sun.intensity=night?1.75:2.35;
+ illumination.accent.intensity=night?2.7:2.0;
+ illumination.key.intensity=night?4.1:4.8;
+ illumination.loungeLight.intensity=night?3.7:4.3;
+ renderer.toneMappingExposure=night?1.08:1.13;
 }
 let prev=0;
 function animate(t){
@@ -545,8 +551,8 @@ async function boot(){
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:"high-performance"});
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.38;
-  renderer.shadowMap.enabled=true;
+  renderer.toneMappingExposure=1.10;
+  renderer.shadowMap.enabled=!matchMedia("(max-width: 660px)").matches;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.domElement.className="office3d-canvas";
   renderer.domElement.setAttribute("aria-label","Ufficio tridimensionale interattivo: trascina per ruotare, scorri per ingrandire e tocca un agente per selezionarlo");
@@ -556,9 +562,11 @@ async function boot(){
   agency=new THREE.Group();scene.add(agency);
   camera=new THREE.PerspectiveCamera(38,1,.1,90);
   illumination=lights();
-  floorMat.color.setHex(0xbcc6c3);woodPale.color.setHex(0xc7b5a1);
-  neonWarm.emissiveIntensity=.10;neonBlue.emissiveIntensity=.12;
-  neonPurple.emissiveIntensity=.08;
+  floorMat.color.setHex(0xd6d3ca);woodPale.color.setHex(0xd2bda3);
+  metal.color.setHex(0x62726f);chrome.color.setHex(0x96a5a1);
+  linen.color.setHex(0x85928b);dark.color.setHex(0x293943);
+  neonWarm.emissiveIntensity=.045;neonBlue.emissiveIntensity=.08;
+  neonPurple.emissiveIntensity=.04;
   createShell();deskPods();lounge();meeting();
   await preloadHumans();
   syncPeople();setMood(bridge.getMood());cameraUpdate();
