@@ -69,6 +69,15 @@ try {
     "Desktop renderer pixel budget not controlled: "+JSON.stringify(desktopPerf));
   assert.ok(desktopPerf.renderer.gpuGeometries<800,
     "Too many unique geometries; shared GPU box reuse regressed: "+JSON.stringify(desktopPerf));
+  await page.waitForFunction(()=>window.AIOOffice3D.metrics?.sampleCount>=12,
+    null,{timeout:15000});
+  const observedDesktop=await page.evaluate(()=>window.AIOOffice3D.metrics);
+  assert.equal(observedDesktop.source,"observed-render-cadence-not-GPU-timing");
+  assert.ok(observedDesktop.observedFps>0&&observedDesktop.observedFps<=120,
+    "Measured desktop FPS is invalid: "+JSON.stringify(observedDesktop));
+  assert.ok(observedDesktop.p95IntervalMs>=observedDesktop.p50IntervalMs,
+    "Frame time percentiles inverted");
+  console.log("Measured desktop frame cadence",JSON.stringify(observedDesktop));
   console.log("Desktop real-3D renderer budget",JSON.stringify(desktopPerf));
   await page.locator("#roomZoom").click();
   assert.equal(await page.evaluate(()=>window.AIOOffice3D.cameraMode),"postazioni",
