@@ -604,10 +604,34 @@ function setMood(mood){
  renderer.toneMappingExposure=night?1.08:1.13;
 }
 let prev=0,slowFrames=0,qualityWindow=0,qualityPixels=1,actualFrames=0;
+const frameIntervals=[];
+function recordFrameInterval(ms){
+  if(!Number.isFinite(ms)||ms<=0||ms>1000)return;
+  frameIntervals.push(ms);
+  if(frameIntervals.length>120)frameIntervals.shift();
+}
+function publishFrameStats(){
+  if(frameIntervals.length<12)return;
+  const sorted=frameIntervals.slice().sort((a,b)=>a-b);
+  const quantile=p=>Number(sorted[Math.min(sorted.length-1,Math.ceil(p*sorted.length)-1)].toFixed(1));
+  const sum=frameIntervals.reduce((a,b)=>a+b,0);
+  const average=sum/frameIntervals.length;
+  info.metrics={
+    source:"observed-render-cadence-not-GPU-timing",
+    sampleCount:frameIntervals.length,
+    observedFps:Number((1000/average).toFixed(1)),
+    p50IntervalMs:quantile(.5),
+    p95IntervalMs:quantile(.95),
+    targetFps:info.targetFps,
+    quality:info.quality,
+    pixelRatio:info.renderPixelRatio
+  };
+  info.fps=info.metrics.observedFps;
+}
 const reducedMotion=matchMedia("(prefers-reduced-motion: reduce)");
 function animate(t){
  raf=requestAnimationFrame(animate);
- if(document.hidden){prev=0;return;}
+ if(document.hidden){prev=0;frameIntervals.length=0;return;}
  // Skip heavy WebGL and skeleton calculations above 60fps desktop / 30fps mobile.
  const interval=1000/info.targetFps;
  if(prev && t-prev<interval*.88)return;
@@ -617,7 +641,7 @@ function animate(t){
  const motionDt=Math.min(.25,elapsed/1000);
  const dt=Math.min(.05,motionDt);prev=t;
  actualFrames++;
- if(actualFrames%18===0)info.fps=Math.round(1000/Math.max(1,elapsed));
+ if(prev && actualFrames>1)recordFrameInterval(elapsed);
  const budget=info.targetFps===30?38:25;
  slowFrames=THREE.MathUtils.clamp(slowFrames+(elapsed>budget?1.5:-.36),0,80);
  if(t-qualityWindow>4000){
@@ -681,6 +705,7 @@ function animate(t){
  renderer.render(scene,camera);
  info.frames++;
  if(info.frames%24===0){
+   publishFrameStats();
    info.renderStats={
      drawCalls:renderer.info.render.calls,
      triangles:renderer.info.render.triangles,
