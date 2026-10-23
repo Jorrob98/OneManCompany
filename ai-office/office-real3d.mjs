@@ -412,12 +412,17 @@ function lights(){
  const loungeLight=new THREE.PointLight(0xffe9d8,4,12,2);loungeLight.position.set(-5,2.9,-2.5);scene.add(loungeLight);
  return {sun,key,accent,loungeLight,hemi};
 }
+const cameraDestination=new THREE.Vector3(),cameraLookAt=new THREE.Vector3();
+let cameraInitialized=false;
 function cameraUpdate(){
  elevation=THREE.MathUtils.clamp(elevation,.40,1.19);
  distance=THREE.MathUtils.clamp(distance,9,38);
- camera.position.set(target.x+distance*Math.sin(azimuth)*Math.cos(elevation),
+ cameraDestination.set(target.x+distance*Math.sin(azimuth)*Math.cos(elevation),
     target.y+distance*Math.sin(elevation),target.z+distance*Math.cos(azimuth)*Math.cos(elevation));
- camera.lookAt(target);
+ if(!cameraInitialized){
+   camera.position.copy(cameraDestination);cameraLookAt.copy(target);
+   camera.lookAt(target);cameraInitialized=true;
+ }
 }
 let lastMobile=null, cameraMode=0;
 function cameraPreset(mode){
@@ -437,8 +442,15 @@ function resize(){
  if(!rect.width||!rect.height||!renderer)return;
  const w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
  camera.aspect=w/h;camera.fov=w<660?48:38;camera.updateProjectionMatrix();
- renderer.setSize(w,h,false);renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,w<660?1.35:1.65));
  const mobile=w<660;
+ info.quality=mobile?"mobile":"desktop";
+ info.targetFps=mobile||reducedMotion.matches?30:60;
+ qualityPixels=Math.min(window.devicePixelRatio||1,mobile?1.24:1.65);
+ renderer.setPixelRatio(qualityPixels);
+ renderer.setSize(w,h,false);
+ renderer.shadowMap.enabled=!mobile;
+ info.renderPixelRatio=qualityPixels;
+ slowFrames=0;qualityWindow=performance.now();
  if(lastMobile!==mobile){
    lastMobile=mobile;
    // Mobile starts on people, not a tiny overhead dollhouse.
@@ -500,11 +512,31 @@ function setMood(mood){
  illumination.loungeLight.intensity=night?3.7:4.3;
  renderer.toneMappingExposure=night?1.08:1.13;
 }
-let prev=0;
+let prev=0,slowFrames=0,qualityWindow=0,qualityPixels=1,actualFrames=0;
+const reducedMotion=matchMedia("(prefers-reduced-motion: reduce)");
 function animate(t){
  raf=requestAnimationFrame(animate);
- if(document.hidden)return;
- const dt=prev?Math.min(.04,(t-prev)/1000):.016;prev=t;
+ if(document.hidden){prev=0;return;}
+ // Skip heavy WebGL and skeleton calculations above 60fps desktop / 30fps mobile.
+ const interval=1000/info.targetFps;
+ if(prev && t-prev<interval*.88)return;
+ const elapsed=prev?t-prev:interval;
+ const dt=Math.min(.05,elapsed/1000);prev=t;
+ actualFrames++;
+ if(actualFrames%18===0)info.fps=Math.round(1000/Math.max(1,elapsed));
+ const budget=info.targetFps===30?38:25;
+ slowFrames=THREE.MathUtils.clamp(slowFrames+(elapsed>budget?1.5:-.36),0,80);
+ if(t-qualityWindow>4000){
+   qualityWindow=t;
+   const max=info.quality==="mobile"?1.24:1.65;
+   const next=slowFrames>22?Math.max(.85,qualityPixels-.15):
+     slowFrames<5?Math.min(max,qualityPixels+.08):qualityPixels;
+   if(Math.abs(next-qualityPixels)>.03){
+     qualityPixels=Number(next.toFixed(2));
+     renderer.setPixelRatio(qualityPixels);
+     info.renderPixelRatio=qualityPixels;
+   }
+ }
  for(const [id,a] of agents){
    const dest=a.goal==="desk"?new THREE.Vector3(a.slot.x,0,a.slot.z):
      a.goal==="meeting"?new THREE.Vector3(1+a.index*.8,0,-1.65):
@@ -543,6 +575,11 @@ function animate(t){
    a.label.visible=id===selected;
    a.halo.visible=id===selected;
  }
+ // Damped camera motion prevents abrupt cuts when changing view or using touch.
+ const blend=1-Math.exp(-7.5*dt);
+ camera.position.lerp(cameraDestination,blend);
+ cameraLookAt.lerp(target,blend);
+ camera.lookAt(cameraLookAt);
  renderer.render(scene,camera);
  info.frames++;
 }
