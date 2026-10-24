@@ -45,7 +45,6 @@ const original=document.getElementById("roomCanvas");
 if (!mount || !original || !bridge) throw new Error("AI Office scene mount unavailable");
 const test=document.createElement("canvas");
 if (!test.getContext("webgl2") && !test.getContext("webgl")) {
-  mount.insertAdjacentHTML("beforeend",'<div class="office3d-warning">3D non disponibile su questo browser. Attiva WebGL per vedere il nuovo ufficio.</div>');
   throw new Error("WebGL is not supported");
 }
 
@@ -496,7 +495,7 @@ let lastMobile=null, cameraMode=0;
 function cameraPreset(mode){
  cameraMode=mode;
  info.cameraMode=["panoramica","postazioni","dipendente"][mode];
- if(mode===0){target.set(0,1.15,0);distance=27;elevation=.60;}
+ if(mode===0){target.set(-2.2,1.05,1.35);distance=22.5;elevation=.56;}
  else if(mode===1){target.set(-2.9,1.05,3.45);distance=lastMobile?12.6:14.7;elevation=.49;}
  else{
    const a=agents.get(selected)||agents.values().next().value;
@@ -764,14 +763,22 @@ async function boot(){
   const live=document.querySelector(".scene-label");
   if(live)live.textContent="3D INTERATTIVO · ANTEPRIMA";
   hookup();resize();animate(0);
-  window.__AI_OFFICE_3D_READY=true;info.status="ready";
-  window.AIOAgents3D.status="ready";window.AIOAgents3D.agents=[...agents.keys()];
+  // First Three.js frame must actually render before the public scene becomes
+  // visible. Never reveal the old photographic/canvas view as an interstitial.
+  requestAnimationFrame(()=>{
+    if(info.status==="error")return;
+    info.status="ready";
+    window.__AI_OFFICE_3D_READY=true;
+    window.AIOAgents3D.status="ready";
+    window.AIOAgents3D.agents=[...agents.keys()];
+    document.documentElement.classList.add("aio-stage-ready");
+  });
  }catch(err){
   info.status="error";info.error=String(err).slice(0,160);
   console.error("3D office initialization failed",err);
   if(renderer?.domElement?.parentNode)renderer.domElement.remove();
-  original.style.visibility="visible";
-  mount.classList.remove("real3d-active");import("./agents3d.mjs");
+  window.AIOShowStageError?.();
+  // Legacy remains opt-in via ?legacy=1; do not silently flash old graphics.
  }
 }
 boot();
