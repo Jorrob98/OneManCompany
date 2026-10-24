@@ -370,7 +370,7 @@ function person(a,index){
    c.font="bold 30px Arial";c.fillStyle="white";c.textAlign="center";
    c.fillText(String(a.name).slice(0,15),170,56);
  });
- const label=plane(g,0,2.12,0,1.09,.27,new THREE.MeshBasicMaterial({
+ const label=plane(g,0,2.13,0,1.38,.33,new THREE.MeshBasicMaterial({
    map:tag,side:THREE.DoubleSide,transparent:true,depthWrite:false}));
  const halo=new THREE.Mesh(new THREE.RingGeometry(.34,.41,32),
    new THREE.MeshBasicMaterial({color:0x45a19e,side:THREE.DoubleSide}));
@@ -511,7 +511,7 @@ let lastMobile=null, cameraMode=0;
 function cameraPreset(mode){
  cameraMode=mode;
  info.cameraMode=["panoramica","postazioni","dipendente"][mode];
- if(mode===0){target.set(-2.5,1.10,2.0);distance=17.8;elevation=.34;}
+ if(mode===0){target.set(-2.25,1.10,.55);distance=17.8;elevation=.34;}
  else if(mode===1){target.set(lastMobile?-3.15:-2.9,1.07,3.45);
    distance=lastMobile?9.6:13.4;elevation=lastMobile?.29:.34;}
  else{
@@ -623,6 +623,7 @@ function setMood(mood){
  renderer.toneMappingExposure=night?1.08:1.13;
 }
 let prev=0,slowFrames=0,qualityWindow=0,qualityPixels=1,actualFrames=0;
+const labelParentQuat=new THREE.Quaternion();
 const frameIntervals=[];
 function recordFrameInterval(ms){
   if(!Number.isFinite(ms)||ms<=0||ms>1000)return;
@@ -712,7 +713,11 @@ function animate(t){
      // reached the next room while it is still blending out of the chair.
      a.point=a.goal;
    }
-   a.label.quaternion.copy(camera.quaternion);
+   // GLB actors are turned toward their desks (parent yaw=PI). Copying the
+   // camera quaternion as a LOCAL child rotation mirrored the nameplate.
+   // Convert camera WORLD orientation into the label parent's coordinates.
+   a.g.getWorldQuaternion(labelParentQuat);
+   a.label.quaternion.copy(labelParentQuat.invert().multiply(camera.quaternion));
    a.label.visible=id===selected;
    a.halo.visible=id===selected;
  }
