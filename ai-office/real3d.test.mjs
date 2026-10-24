@@ -199,6 +199,18 @@ try {
   }));
   assert.ok(bounds.pageWidth<=bounds.viewport+2,"3D caused mobile overflow "+JSON.stringify(bounds));
   assert.ok(bounds.sceneHeight>250,"3D camera is clipped on mobile");
+  const mobileOrder=await page.evaluate(()=>{
+    const office=document.querySelector('[data-view="office"].active');
+    const scene=office.querySelector(".room-card").getBoundingClientRect();
+    const heading=office.querySelector(".heading-row").getBoundingClientRect();
+    const stats=office.querySelector(".stats").getBoundingClientRect();
+    return {sceneTop:scene.top,headingTop:heading.top,statsTop:stats.top,
+      canvasVisible:getComputedStyle(office.querySelector(".office3d-canvas")).opacity};
+  });
+  assert.ok(mobileOrder.sceneTop<mobileOrder.headingTop &&
+    mobileOrder.sceneTop<mobileOrder.statsTop,
+    "Mobile still buries 3D office below legacy dashboard intro: "+JSON.stringify(mobileOrder));
+  assert.equal(mobileOrder.canvasVisible,"1","WebGL scene not visible on mobile");
   await page.screenshot({path:"ai-office/office-real3d-mobile.png"});
   assert.deepEqual(failures,[],"JavaScript errors in the real 3D scene");
   console.log("Actual shared-world 3D office PASS: GLB seating + desktop/mobile");
