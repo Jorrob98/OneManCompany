@@ -574,7 +574,8 @@ let reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches,frameS
 function loop(t){
  // The legacy 2D canvas is a fallback. Never render it behind the active 3D
  // WebGL office: otherwise the hidden Canvas2D consumes a second render budget.
- const real3d=canvas.closest(".scene-wrap")?.classList.contains("real3d-active");
+ const real3d=document.documentElement.classList.contains("aio-boot-3d") ||
+   canvas.closest(".scene-wrap")?.classList.contains("real3d-active");
  if(!real3d&&canvas.offsetParent!==null&&document.visibilityState!=="hidden"&&
    (!reduced||frameSkip++%30===0)){
    scene(t);legacyFrames++;
