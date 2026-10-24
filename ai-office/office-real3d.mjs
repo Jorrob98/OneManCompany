@@ -425,6 +425,7 @@ window.AIOAgents3D={
  },
  snapshot:()=>[...agents.entries()].map(([id,a])=>({
    id,point:a.point,goal:a.goal,slot:a.index,modelStyle:a.modelStyle,
+   position:{x:Number(a.g.position.x.toFixed(3)),z:Number(a.g.position.z.toFixed(3))},
    sittingBlend:Number(a.sit.toFixed(2)),posture:a.sit>.90?"sitting":"standing",
    realGeometry:true,chairY:.805
  })),
@@ -699,6 +700,21 @@ function animate(t){
    a.label.visible=id===selected;
    a.halo.visible=id===selected;
  }
+ // In "dipendente" view the camera must follow the selected GLB while it
+ // walks: formerly it focused only once, leaving the person outside frame.
+ if(cameraMode===2){
+   const followed=agents.get(selected)||agents.values().next().value;
+   if(followed){
+     const followBlend=1-Math.exp(-3.5*motionDt);
+     target.x=THREE.MathUtils.lerp(target.x,followed.g.position.x,followBlend);
+     target.y=THREE.MathUtils.lerp(target.y,1.1,followBlend);
+     target.z=THREE.MathUtils.lerp(target.z,followed.g.position.z,followBlend);
+     cameraUpdate();
+     info.following=selected;
+   }else{
+     info.following=null;
+   }
+ }
  // Damped camera motion prevents abrupt cuts when changing view or using touch.
  const blend=1-Math.exp(-7.5*motionDt);
  camera.position.lerp(cameraDestination,blend);
@@ -713,6 +729,8 @@ function animate(t){
      triangles:renderer.info.render.triangles,
      gpuGeometries:renderer.info.memory.geometries
    };
+   info.cameraTarget={x:Number(target.x.toFixed(3)),
+     y:Number(target.y.toFixed(3)),z:Number(target.z.toFixed(3))};
  }
 }
 async function boot(){
