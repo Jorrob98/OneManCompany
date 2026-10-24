@@ -50,7 +50,7 @@ if (!test.getContext("webgl2") && !test.getContext("webgl")) {
 
 let scene,camera,renderer,root,agency,night=true,selected="",resizeObserver=null,raf=0;
 const interactive=[],agents=new Map(),mouse=new THREE.Vector2(),raycaster=new THREE.Raycaster(),hotspots=[];
-let azimuth=.76,elevation=.60,distance=27,dragging=false,dragDistance=0,startX=0,startY=0,lastX=0,lastY=0,frame=0;
+let azimuth=1.72,elevation=.33,distance=21,dragging=false,dragDistance=0,startX=0,startY=0,lastX=0,lastY=0,frame=0;
 const target=new THREE.Vector3(0,1.15,0);
 const colors={ink:0x111827,stone:0x27303d,slate:0x384352,wood:0x9a6a50,woodLight:0xc3926b,
  copper:0xe9a16a,glass:0x6c9db8,blue:0x4189d9,cyan:0x65e1df,violet:0x9a8cf1,cream:0xffe3b7};
@@ -215,7 +215,7 @@ function desk(x,z,rot=0,size=1){
  // monitor back stand and visible screen
  box(grp,0,1.15,-.25,.08,.52,.08,metal);
  box(grp,0,1.56,-.26,1.36,.81,.095,mat(0x0d1726,.3,.28));
- screenSurface(grp,0,1.58,-.199,1.24,.71,"code");
+ screenSurface(grp,0,1.58,-.199,1.24,.71,x<-4?"board":x<0?"code":"chart");
  // side tablet + coffee mug
  box(grp,1.07,.91,.08,.42,.025,.35,mat(0x1c2938));
  cylinder(grp,-1.1,.98,.18,.10,.09,.18,mat(0xe6c6ae,.8),12);
@@ -225,9 +225,23 @@ function chair(x,z,rotation=0){
  const grp=new THREE.Group();root.add(grp);grp.position.set(x,0,z);grp.rotation.y=rotation;
  cylinder(grp,0,.32,0,.26,.18,.12,mat(0x222733));
  cylinder(grp,0,.51,0,.042,.042,.42,chrome);
- box(grp,0,.74,0,.78,.13,.73,mat(0x323943));
- box(grp,0,1.2,-.32,.78,.92,.17,mat(0x3c4855));
- for(const dx of [-.38,.38])box(grp,dx,.95,.02,.07,.07,.65,metal);
+ // Fabric executive chair: backrest behind the worker, not in front of GLB.
+ // Former large black backrest at z=-.32 occluded nearly the whole person.
+ const chairFabric=mat(0x647775,.95),chairEdge=mat(0x46585a,.70);
+ roundedPanel(grp,0,.74,0,.77,.105,.69,chairFabric);
+ const back=box(grp,0,1.13,.40,.68,.70,.115,chairFabric);
+ back.rotation.x=-.09;
+ box(grp,0,1.13,.474,.54,.52,.025,chairEdge,false);
+ for(const dx of [-.40,.40]){
+   box(grp,dx,.96,.08,.055,.045,.53,chairEdge);
+   box(grp,dx,.77,.14,.035,.35,.035,chrome);
+ }
+ for(let i=0;i<5;i++){
+   const theta=i*Math.PI*2/5;
+   const ray=box(grp,Math.cos(theta)*.28,.15,Math.sin(theta)*.28,.43,.05,.055,metal);
+   ray.rotation.y=-theta;
+   cylinder(grp,Math.cos(theta)*.46,.077,Math.sin(theta)*.46,.06,.06,.05,dark,10);
+ }
  return grp;
 }
 function deskPods(){
@@ -482,7 +496,7 @@ function lights(){
 const cameraDestination=new THREE.Vector3(),cameraLookAt=new THREE.Vector3();
 let cameraInitialized=false;
 function cameraUpdate(){
- elevation=THREE.MathUtils.clamp(elevation,.40,1.19);
+ elevation=THREE.MathUtils.clamp(elevation,.25,.95);
  distance=THREE.MathUtils.clamp(distance,9,38);
  cameraDestination.set(target.x+distance*Math.sin(azimuth)*Math.cos(elevation),
     target.y+distance*Math.sin(elevation),target.z+distance*Math.cos(azimuth)*Math.cos(elevation));
@@ -495,12 +509,12 @@ let lastMobile=null, cameraMode=0;
 function cameraPreset(mode){
  cameraMode=mode;
  info.cameraMode=["panoramica","postazioni","dipendente"][mode];
- if(mode===0){target.set(-2.2,1.05,1.35);distance=22.5;elevation=.56;}
- else if(mode===1){target.set(-2.9,1.05,3.45);distance=lastMobile?12.6:14.7;elevation=.49;}
+ if(mode===0){target.set(-2.3,1.10,1.75);distance=20.8;elevation=.34;}
+ else if(mode===1){target.set(-2.9,1.08,3.35);distance=lastMobile?13.4:15;elevation=.34;}
  else{
    const a=agents.get(selected)||agents.values().next().value;
    target.set(a?.g.position.x??-2.9,1.1,a?.g.position.z??3.5);
-   distance=9.5;elevation=.44;
+   distance=9.8;elevation=.30;
  }
  cameraUpdate();
 }
@@ -556,7 +570,7 @@ function pointerMove(e){
  dragDistance+=Math.abs(dx)+Math.abs(dy);
  if(dragDistance>2){
    azimuth=THREE.MathUtils.clamp(azimuth-dx*.006,.46,1.34);
-   elevation=THREE.MathUtils.clamp(elevation+dy*.004,.43,1.1);
+   elevation=THREE.MathUtils.clamp(elevation+dy*.004,.25,.95);
    cameraUpdate();
  }
  lastX=e.clientX;lastY=e.clientY;
