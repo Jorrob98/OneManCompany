@@ -200,6 +200,18 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Screenshot visivamente ispezionati:** `office-real3d-scene.png`, `office-real3d-desktop.png`, `office-real3d-mobile.png`. L'ambiente è più chiaro, più leggibile e senza foto 2.5D in primo piano. Restano visibili dettagli poco realistici degli avatar e una parte dell'arredo può essere parzialmente tagliata nelle viste ravvicinate.
 - **Limiti:** non certificati FPS/hardware iPhone reale, animazioni realistiche delle mani e delle gambe non concluse, niente navmesh/collisioni complete, nessuna inferenza AI online autentica provata, dati ancora principalmente nel browser. Non dichiarare il 100%.
 
+### 24/10/2026 — riparazione avvio, camera e layout 3D: pubblicata e verificata
+
+- **Difetto riferito dall'utente:** la fotografia della vecchia schermata appare prima dei personaggi, e la nuova scena è poco gradevole, con avatar piccoli/nascosti da schienali e dashboard davanti al 3D.
+- **Causa certa della vecchia schermata:** `index.html` conteneva da subito Canvas2D e immagine 2.5D, nascondendoli soltanto dopo aver terminato il download dei GLB. La classe di boot viene ora installata nel `<head>` prima del CSS e nasconde i due vecchi layer dall'**inizio**; solo il primo frame reale di Three.js rimuove l'overlay di caricamento. L'errore mostra recupero esplicito, senza tornare automaticamente alla foto. `?legacy=1` rimane disponibile su scelta esplicita.
+- **Fluidità all'avvio:** modelli umani + clip idle/walk vengono richiesti contemporaneamente, non in due fasi sequenziali; eliminata la creazione di un secondo contesto WebGL di verifica. Il vecchio Canvas2D non disegna durante il boot moderno.
+- **Inquadratura e geometria:** vista iniziale più vicina e laterale, schienali delle sedie portati davvero dietro ai GLB (non davanti al busto), nameplate corretti usando la trasformazione world-to-local per impedire il testo specchiato, contenuti degli schermi differenziati.
+- **Interfaccia:** su Windows e iPhone lo studio 3D viene mostrato **prima** del vecchio blocco titoli/statistiche; su iPhone camera ravvicinata per dare più spazio alle persone. Caricatore pulito e messaggio di errore con pulsante riprova.
+- **QA reale:** GitHub Actions Studio UI run `40103276604` **PASS**. `real3d.test.mjs` controlla vecchia immagine + vecchio canvas invisibili all'avvio, loader visibile fino a 3D pronto, layout studio-first desktop/mobile, seduta geometrica, percorso agente verso meeting e ritorno, pensionamento/reinserimento e nessuna mesh di picking residua. Screenshot ispezionati: `office-real3d-scene.png` e `office-real3d-mobile.png`.
+- **Deploy pubblico:** GitHub Actions Cloudflare Deploy run `40103272979` **PASS**. Commit effettivamente pubblicato: `5981bf390e5ff1725037ef19d80223c9d7f91231`. Preview: https://ai-office-api.jorrob98.workers.dev/ · SHA: https://ai-office-api.jorrob98.workers.dev/preview-version.json
+- **Limite grafico onesto:** mobili geometrici ancora semplici e texture artificiali, seduta/mani non completamente naturali, una parte del locale resta tagliata nelle viste ravvicinate; NON definire il prodotto finito.
+- **Limite prestazionale:** test GitHub Chrome SwiftShader software ha osservato circa **5 FPS** (`p95IntervalMs=283.2`), molto inferiore al target di 60 FPS. Non rappresenta FPS di iPhone reale e non certifica fluidità su hardware; servono misure reali e ottimizzazioni ulteriori. L'inferenza AI live autenticata resta non verificata.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
