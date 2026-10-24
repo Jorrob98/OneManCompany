@@ -50,6 +50,15 @@ try {
     true,"Loading cover was not removed after first real GLB render");
   assert.equal(await page.locator("#aioStageLoader").evaluate(el=>getComputedStyle(el).opacity),
     "0","Loading overlay remains on top of rendered 3D");
+  const desktopOrder=await page.evaluate(()=>{
+    const office=document.querySelector('[data-view="office"].active');
+    return {scene:office.querySelector(".room-card").getBoundingClientRect().top,
+      headline:office.querySelector(".heading-row").getBoundingClientRect().top,
+      kpis:office.querySelector(".stats").getBoundingClientRect().top};
+  });
+  assert.ok(desktopOrder.scene<desktopOrder.headline &&
+    desktopOrder.scene<desktopOrder.kpis,
+    "Desktop still shows old dashboard above the 3D office: "+JSON.stringify(desktopOrder));
   assert.equal(await page.locator(".office3d-canvas").count(),1,"Physical 3D scene missing");
   assert.equal(await page.locator("#penthouseStage").evaluate(e=>getComputedStyle(e).display),
     "none","Old 2.5D photograph is still showing over the office geometry");
