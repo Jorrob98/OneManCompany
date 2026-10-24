@@ -85,6 +85,12 @@ try {
   await page.waitForTimeout(450);
   await page.screenshot({path:"ai-office/office-real3d-desktop.png"});
   await page.locator(".scene-wrap").screenshot({path:"ai-office/office-real3d-scene.png"});
+  // Real focus must follow the employee's ACTUAL position throughout a walk,
+  // instead of remaining fixed at the desk where the camera mode was selected.
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.evaluate(()=>window.AIOOffice3D.cameraMode),"dipendente");
+  await page.waitForFunction(()=>window.AIOOffice3D.following==="a1",
+    null,{timeout:8000});
   // Debug gate 1: no false arrival while a seated GLB is still standing up.
   const departure=await page.evaluate(()=>{
     const ok=window.AIOAgents3D.command("a1","meeting");
@@ -100,6 +106,18 @@ try {
   const arrived=await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1"));
   assert.equal(arrived.point,"meeting");
   assert.ok(arrived.sittingBlend<.2,"Agent is still seated in the meeting room");
+  await page.waitForFunction(()=>{
+    const a=window.AIOAgents3D.snapshot().find(a=>a.id==="a1");
+    const c=window.AIOOffice3D.cameraTarget;
+    return a&&c&&Math.hypot(a.position.x-c.x,a.position.z-c.z)<.45;
+  },null,{timeout:8000});
+  const cameraTrack=await page.evaluate(()=>({
+    person:window.AIOAgents3D.snapshot().find(a=>a.id==="a1").position,
+    target:window.AIOOffice3D.cameraTarget
+  }));
+  assert.ok(Math.hypot(cameraTrack.person.x-cameraTrack.target.x,
+    cameraTrack.person.z-cameraTrack.target.z)<.45,
+    "Camera lost selected moving employee: "+JSON.stringify(cameraTrack));
   assert.ok(await page.evaluate(()=>window.AIOAgents3D.command("a1","desk")));
   await page.waitForFunction(()=>window.AIOAgents3D.snapshot()
     .some(a=>a.id==="a1"&&a.point==="desk"&&a.sittingBlend>.90),
