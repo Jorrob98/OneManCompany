@@ -212,6 +212,17 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Limite grafico onesto:** mobili geometrici ancora semplici e texture artificiali, seduta/mani non completamente naturali, una parte del locale resta tagliata nelle viste ravvicinate; NON definire il prodotto finito.
 - **Limite prestazionale:** test GitHub Chrome SwiftShader software ha osservato circa **5 FPS** (`p95IntervalMs=283.2`), molto inferiore al target di 60 FPS. Non rappresenta FPS di iPhone reale e non certifica fluidità su hardware; servono misure reali e ottimizzazioni ulteriori. L'inferenza AI live autenticata resta non verificata.
 
+### 24/10/2026 — recupero avvio e rifinitura visiva della preview
+
+- **Difetto riprodotto e corretto:** vecchia foto/Canvas2D mostrata durante i download 3D. Il flag `aio-boot-3d` viene applicato prima degli stili; la pagina mostra un loader pulito fino al primo render GLB, senza transizione verso la schermata fotografica. Fallimenti WebGL mostrano un errore esplicito con Riprova e vista legacy volontaria (non fallback automatico).
+- **Caricamento ottimizzato:** modelli e clip animazione scaricati in parallelo, senza creare un secondo WebGL context di prova durante il boot.
+- **Mobile e desktop:** lo spazio 3D è prioritario nella pagina; pannello statistico dopo la scena, con inquadratura più ravvicinata su smartphone. Sedie geometriche ridisegnate per non nascondere i dipendenti.
+- **Bug CI scoperto dopo la prima revisione:** `cameraTarget` pubblicato solo ogni 24 frame mandava in timeout il test di focus quando Chrome era lento; corretto in `office-real3d.mjs` aggiornando lo stato camera a ogni frame disegnato.
+- **Grafica di questa pubblicazione:** nuovo azimuth panoramico più leggibile, monitor rivolti verso la camera, parete con pannelli acustici discreti, illuminazione ammorbidita. Gli screenshot del test sono stati ispezionati: il centro dell'immagine è maggiormente occupato dalla stanza, invece di una grande zona vuota.
+- **Test browser/UI:** `AI Office Studio UI` run `40104005861` e `40104002989` entrambi PASS, inclusi anti-flash, percorso fino alla riunione, follow camera, rientro/posa e viewport smartphone.
+- **Deploy verificato:** `AI Office Cloudflare Deploy` run `40104002972` PASS, build `95cb0b2f96c4f7569f6b98f99101e1c618c4e66b`. `/preview-version.json` verificato dal runner, asset e UI live confermati. Preview: https://ai-office-api.jorrob98.workers.dev/
+- **Ancora APERTO:** avatar GLB e seduta non fotorealistici, fluidità su hardware iPhone/Windows reale non misurata, navigazione/collisioni e ragionamento AI autentico ancora da collaudare. NON 100%.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
