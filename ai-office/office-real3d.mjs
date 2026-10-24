@@ -741,6 +741,10 @@ function animate(t){
  camera.position.lerp(cameraDestination,blend);
  cameraLookAt.lerp(target,blend);
  camera.lookAt(cameraLookAt);
+ // Keep the actual camera target current on every rendered frame; a snapshot
+ // only every 24 frames lagged several seconds on slower mobile/WebGL devices.
+ info.cameraTarget={x:Number(target.x.toFixed(3)),
+   y:Number(target.y.toFixed(3)),z:Number(target.z.toFixed(3))};
  renderer.render(scene,camera);
  info.frames++;
  if(info.frames%24===0){
@@ -750,8 +754,6 @@ function animate(t){
      triangles:renderer.info.render.triangles,
      gpuGeometries:renderer.info.memory.geometries
    };
-   info.cameraTarget={x:Number(target.x.toFixed(3)),
-     y:Number(target.y.toFixed(3)),z:Number(target.z.toFixed(3))};
  }
 }
 async function boot(){
