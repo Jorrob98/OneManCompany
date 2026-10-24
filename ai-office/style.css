@@ -581,3 +581,31 @@
  .aio-loader-orbit span,.aio-loader-progress span{animation:none}
  :root.aio-boot-3d .scene-wrap .office3d-canvas{transition:none}
 }
+
+
+/* Mobile product-first layout: the real 3D office appears above the old
+   headline/statistics, rather than being buried below a dashboard intro. */
+@media(max-width:750px){
+  .page[data-view="office"].active{
+    display:flex;flex-direction:column;gap:15px;
+  }
+  .page[data-view="office"] .office-grid{order:0;margin:0}
+  .page[data-view="office"] .heading-row{order:1;margin:2px 0 0}
+  .page[data-view="office"] .stats{order:2;margin:0}
+  .page[data-view="office"] .under-grid{order:3;margin-top:0}
+  .page[data-view="office"] .room-card{
+    overflow:hidden;border-radius:16px;
+    border-color:#5f747d77;box-shadow:0 12px 35px #09131f27;
+  }
+  .page[data-view="office"] .scene-wrap{
+    min-height:390px;
+  }
+  .page[data-view="office"] .panel-top{
+    height:48px;background:#1c2a35;
+  }
+  main:has(.page[data-view="office"].active){padding-top:11px}
+  .page[data-view="office"] .heading-row h1{
+    font-size:clamp(25px,6.5vw,31px);
+  }
+  .page[data-view="office"] .office-grid .side-stack{margin-top:0}
+}
