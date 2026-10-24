@@ -609,3 +609,17 @@
   }
   .page[data-view="office"] .office-grid .side-stack{margin-top:0}
 }
+
+
+/* Studio-first desktop and mobile. The old greeting and KPIs are secondary:
+   entering the app should look like an interactive workplace, not a dashboard. */
+.page[data-view="office"].active{display:flex;flex-direction:column;gap:17px}
+.page[data-view="office"] .office-grid{order:0;margin:0}
+.page[data-view="office"] .heading-row{order:1;margin:0}
+.page[data-view="office"] .stats{order:2;margin:0}
+.page[data-view="office"] .under-grid{order:3;margin:0}
+main:has(.page[data-view="office"].active){padding-top:19px}
+@media(max-width:750px){
+ main:has(.page[data-view="office"].active){padding-top:10px}
+ .page[data-view="office"].active{gap:14px}
+}
