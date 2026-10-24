@@ -511,8 +511,9 @@ let lastMobile=null, cameraMode=0;
 function cameraPreset(mode){
  cameraMode=mode;
  info.cameraMode=["panoramica","postazioni","dipendente"][mode];
- if(mode===0){target.set(-2.3,1.10,1.75);distance=20.8;elevation=.34;}
- else if(mode===1){target.set(-2.9,1.08,3.35);distance=lastMobile?13.4:15;elevation=.34;}
+ if(mode===0){target.set(-2.5,1.10,2.0);distance=17.8;elevation=.34;}
+ else if(mode===1){target.set(lastMobile?-3.15:-2.9,1.07,3.45);
+   distance=lastMobile?9.6:13.4;elevation=lastMobile?.29:.34;}
  else{
    const a=agents.get(selected)||agents.values().next().value;
    target.set(a?.g.position.x??-2.9,1.1,a?.g.position.z??3.5);
@@ -524,7 +525,7 @@ function resize(){
  const rect=mount.getBoundingClientRect();
  if(!rect.width||!rect.height||!renderer)return;
  const w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
- camera.aspect=w/h;camera.fov=w<660?43:38;camera.updateProjectionMatrix();
+ camera.aspect=w/h;camera.fov=w<660?40:38;camera.updateProjectionMatrix();
  const mobile=w<660;
  info.quality=mobile?"mobile":"desktop";
  info.targetFps=mobile||reducedMotion.matches?30:60;
