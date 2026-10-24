@@ -4,6 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#101522">
+  <script>
+    // Install this before the stylesheet loads: no old 2D/photographic
+    // office is allowed to paint while the default true-3D scene loads.
+    if (!new URLSearchParams(location.search).has("legacy")) {
+      document.documentElement.classList.add("aio-boot-3d");
+    }
+    window.AIOShowStageError = function () {
+      const el=document.getElementById("aioStageLoader");
+      if(!el)return;
+      el.classList.add("aio-stage-error");
+      el.setAttribute("role","alert");
+      const label=document.getElementById("aioLoadMessage");
+      if(label)label.textContent="Il 3D non è riuscito ad avviarsi. Gli incarichi restano salvati.";
+      const title=document.getElementById("aioLoadTitle");
+      if(title)title.textContent="Problema nel caricamento 3D";
+      document.documentElement.classList.add("aio-stage-failed");
+    };
+  </script>
   <meta name="description" content="AI Office Studio, il tuo ufficio virtuale interattivo. Anteprima grafica e gestionale.">
   <title>AI OFFICE — Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,8 +40,8 @@
       import("./agents3d.mjs");
     } else {
       import("./office-real3d.mjs").catch(error=>{
-        console.error("3D office module failed; opening fallback",error);
-        import("./agents3d.mjs");
+        console.error("3D office module failed",error);
+        window.AIOShowStageError();
       });
     }
   </script>
@@ -84,9 +102,22 @@
             </div>
             <div class="scene-wrap">
               <canvas id="roomCanvas" aria-hidden="true"></canvas>
+              <div id="aioStageLoader" class="aio-stage-loader" role="status" aria-live="polite" aria-atomic="true">
+                <div class="aio-loader-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div class="aio-loader-copy">
+                  <span class="aio-loader-eyebrow">AI OFFICE · STUDIO 3D</span>
+                  <strong id="aioLoadTitle">Preparazione dell'ufficio</strong>
+                  <p id="aioLoadMessage">Caricamento dello spazio e dei dipendenti 3D</p>
+                  <div class="aio-loader-progress" aria-hidden="true"><span></span></div>
+                  <div class="aio-loader-recovery">
+                    <button type="button" onclick="location.reload()">Riprova</button>
+                    <a href="?legacy=1#office">Vista di compatibilità</a>
+                  </div>
+                </div>
+              </div>
               <div class="penthouse-stage" id="penthouseStage" data-background="living-v3" aria-label="Vista fotografica di riserva; la scena predefinita usa veri arredi 3D">
                 <div class="penthouse-surface" id="penthouseSurface">
-                  <img class="penthouse-artwork" src="./assets/penthouse-living-v3.webp" alt="Ufficio AI premium senza persone statiche, con postazioni vuote, vetrate panoramiche, sala riunioni e area relax" loading="eager" decoding="async">
+                  <img class="penthouse-artwork" src="./assets/penthouse-living-v3.webp" alt="Ufficio AI premium senza persone statiche, con postazioni vuote, vetrate panoramiche, sala riunioni e area relax" loading="lazy" decoding="async">
                   <div class="penthouse-wash"></div>
                   <div class="penthouse-markers" id="penthouseMarkers"></div>
                 </div>
