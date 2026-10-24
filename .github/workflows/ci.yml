@@ -23,6 +23,13 @@ jobs:
 
       - name: Version bump check
         run: |
+          # Infrastructure-only updates are not a new OMC application release.
+          # Preserve the mandatory version check for all source changes.
+          NON_INFRA=$(git diff --name-only origin/main...HEAD | grep -Ev '^(cloudflare/|ai-office/|\.github/workflows/(ci|ai-office-cloudflare|ai-office-studio|ai-office-deploy)\.yml$)' || true)
+          if [ -z "$NON_INFRA" ]; then
+            echo "Cloudflare integration / workflow-only change: OMC version unchanged."
+            exit 0
+          fi
           PR_VERSION=$(grep '^version = ' pyproject.toml | head -1 | sed 's/version = "//;s/"//')
           MAIN_VERSION=$(git show origin/main:pyproject.toml | grep '^version = ' | head -1 | sed 's/version = "//;s/"//')
           echo "PR version: $PR_VERSION"

@@ -1,0 +1,4 @@
+# Publish only the runnable AI OFFICE preview, never source tests or project notes.
+*.test.mjs
+*.md
+office-*.png
