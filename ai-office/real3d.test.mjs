@@ -22,11 +22,34 @@ try {
   const failures=[];
   page.on("pageerror",e=>failures.push(String(e)));
   await page.goto("http://127.0.0.1:"+port+"/",{waitUntil:"domcontentloaded"});
+  // FLASH REGRESSION: DOM and CSS must never paint the photograph or legacy
+  // Canvas2D before the external GLB models have loaded.
+  const firstPaint=await page.evaluate(()=>{
+    const old=document.getElementById("penthouseStage");
+    const canvas=document.getElementById("roomCanvas");
+    const loader=document.getElementById("aioStageLoader");
+    return {
+      mode:document.documentElement.classList.contains("aio-boot-3d"),
+      legacyPhoto:getComputedStyle(old).display,
+      oldCanvas:getComputedStyle(canvas).display,
+      loader:getComputedStyle(loader).display,
+      recovery:getComputedStyle(loader.querySelector(".aio-loader-recovery")).display
+    };
+  });
+  assert.equal(firstPaint.mode,true,"Real-3D boot flag was not installed before paint");
+  assert.equal(firstPaint.legacyPhoto,"none","Old office photo flashes during boot");
+  assert.equal(firstPaint.oldCanvas,"none","Old Canvas2D flashes during boot");
+  assert.equal(firstPaint.loader,"flex","Modern 3D loading state is missing");
+  assert.equal(firstPaint.recovery,"none","Error recovery appears before any error");
   await page.waitForFunction(()=>["ready","error"].includes(window.AIOOffice3D?.status),
     null,{timeout:80000});
   const ready=await page.evaluate(()=>window.AIOOffice3D.status);
   assert.equal(ready,"ready","Default 3D scene not ready: "+
     JSON.stringify(await page.evaluate(()=>window.AIOOffice3D)));
+  assert.equal(await page.evaluate(()=>document.documentElement.classList.contains("aio-stage-ready")),
+    true,"Loading cover was not removed after first real GLB render");
+  assert.equal(await page.locator("#aioStageLoader").evaluate(el=>getComputedStyle(el).opacity),
+    "0","Loading overlay remains on top of rendered 3D");
   assert.equal(await page.locator(".office3d-canvas").count(),1,"Physical 3D scene missing");
   assert.equal(await page.locator("#penthouseStage").evaluate(e=>getComputedStyle(e).display),
     "none","Old 2.5D photograph is still showing over the office geometry");
