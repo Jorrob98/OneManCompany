@@ -52,7 +52,7 @@ if (!mount || !original || !bridge) throw new Error("AI Office scene mount unava
 
 let scene,camera,renderer,root,agency,night=true,selected="",resizeObserver=null,raf=0;
 const interactive=[],agents=new Map(),mouse=new THREE.Vector2(),raycaster=new THREE.Raycaster(),hotspots=[];
-let azimuth=1.72,elevation=.33,distance=21,dragging=false,dragDistance=0,startX=0,startY=0,lastX=0,lastY=0,frame=0;
+let azimuth=1.04,elevation=.33,distance=21,dragging=false,dragDistance=0,startX=0,startY=0,lastX=0,lastY=0,frame=0;
 const target=new THREE.Vector3(0,1.15,0);
 const colors={ink:0x111827,stone:0x27303d,slate:0x384352,wood:0x9a6a50,woodLight:0xc3926b,
  copper:0xe9a16a,glass:0x6c9db8,blue:0x4189d9,cyan:0x65e1df,violet:0x9a8cf1,cream:0xffe3b7};
@@ -127,7 +127,7 @@ function screenSurface(parent,x,y,z,w,h,kind="code",rotationY=0){
    }
    g.fillStyle="#91afc4";g.font="13px Arial";g.fillText("VISUAL DATA · DEMO",32,H-18);
  });
- const material=new THREE.MeshBasicMaterial({map:tx,side:THREE.DoubleSide});
+ const material=new THREE.MeshBasicMaterial({map:tx,side:THREE.DoubleSide,toneMapped:false});
  return plane(parent,x,y,z,w,h,material,rotationY);
 }
 function roundedPanel(parent,x,y,z,w,h,d,material){
@@ -149,6 +149,15 @@ function createShell(){
  for(let x=-9;x<9;x+=1.75)box(root,x,.087,0,.012,.009,14.4,edge,false);
  box(root,0,2.35,-7.2,19.6,4.7,.16,wall,false);
  box(root,-9.6,2.35,0,.16,4.7,14.3,wall,false);
+ // Calm, genuinely geometric acoustic timber panels in the room itself.
+ // Keep them on the back wall (behind chairs) and out of the camera path.
+ const mutedWood=mat(0xc4b8a8,.95);
+ const softSage=mat(0x9bb3aa,.97);
+ for(let x=-8.7;x<-6.3;x+=.22)
+   box(root,x,2.46,-6.992,.105,2.65,.045,mutedWood,false);
+ for(let x=-5.85;x<-3.65;x+=.30)
+   box(root,x,2.56,-6.99,.16,2.0,.038,softSage,false);
+ box(root,-5.1,1.43,-6.92,2.35,.035,.09,mat(0x657e79,.95),false);
  const pane=new THREE.MeshPhysicalMaterial({color:0xe6f1f4,roughness:.4,transparent:true,
    opacity:.45,depthWrite:false,side:THREE.DoubleSide});
  for(let i=0;i<5;i++){
@@ -490,7 +499,7 @@ function lights(){
  sun.shadow.radius=3;
  sun.shadow.camera.left=-13;sun.shadow.camera.right=13;sun.shadow.camera.top=14;sun.shadow.camera.bottom=-14;
  sun.shadow.normalBias=.035;sun.shadow.bias=-.00013;scene.add(sun);
- const key=new THREE.PointLight(0xffeddb,5,12,2);key.position.set(1.5,3.1,-3.3);scene.add(key);
+ const key=new THREE.PointLight(0xffeddb,4.5,12,2);key.position.set(1.5,3.1,-3.3);scene.add(key);
  const accent=new THREE.PointLight(0xd2e7ef,3,12,2);accent.position.set(7,2.5,-4.8);scene.add(accent);
  const loungeLight=new THREE.PointLight(0xffe9d8,4,12,2);loungeLight.position.set(-5,2.9,-2.5);scene.add(loungeLight);
  return {sun,key,accent,loungeLight,hemi};
