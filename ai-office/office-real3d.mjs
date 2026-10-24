@@ -32,21 +32,23 @@ function ensureModel(style){
 async function preloadHumans(){
   const people=bridge.getAgents().filter(a=>a.status==="available").slice(0,4);
   const keys=[...new Set(people.map((a,i)=>modelPaths[a.modelStyle]?a.modelStyle:["f1","m1","f2","m2"][i]))];
-  await Promise.all(keys.map(key=>ensureModel(key)));
-  await Promise.all(["f","m"].map(async sex=>{
-    const a=await loader.loadAsync(rootURL+"/animations/"+sex+"_idle_neutral_01.glb");
-    const w=await loader.loadAsync(rootURL+"/animations/"+sex+"_walk_neutral_01.glb");
-    clips[sex]={idle:a.animations[0],walk:w.animations[0]};
+  // Load people and animation clips concurrently instead of waiting for all
+  // models first and starting the animation downloads only afterwards.
+  const animations=["f","m"].map(async sex=>{
+    const [idle,walk]=await Promise.all([
+      loader.loadAsync(rootURL+"/animations/"+sex+"_idle_neutral_01.glb"),
+      loader.loadAsync(rootURL+"/animations/"+sex+"_walk_neutral_01.glb")
+    ]);
+    clips[sex]={idle:idle.animations[0],walk:walk.animations[0]};
     if(!clips[sex].idle||!clips[sex].walk)throw Error("Missing Biped animation "+sex);
-  }));
+  });
+  await Promise.all([...keys.map(key=>ensureModel(key)),...animations]);
 }
 const mount=document.querySelector(".scene-wrap");
 const original=document.getElementById("roomCanvas");
 if (!mount || !original || !bridge) throw new Error("AI Office scene mount unavailable");
-const test=document.createElement("canvas");
-if (!test.getContext("webgl2") && !test.getContext("webgl")) {
-  throw new Error("WebGL is not supported");
-}
+// WebGLRenderer reports unsupported or lost contexts inside boot().
+// Do not allocate a throwaway second GPU context during startup.
 
 let scene,camera,renderer,root,agency,night=true,selected="",resizeObserver=null,raf=0;
 const interactive=[],agents=new Map(),mouse=new THREE.Vector2(),raycaster=new THREE.Raycaster(),hotspots=[];
