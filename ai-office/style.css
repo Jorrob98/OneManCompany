@@ -505,3 +505,79 @@
 .scene-wrap.real3d-active .room-hint,
 .scene-wrap.real3d-active .scene-watermark{z-index:6}
 .scene-wrap.real3d-active:after{display:none}
+
+
+/* AI OFFICE | flash-free WebGL startup — intentional default scene only.
+   The old photo and old Canvas2D are never allowed to appear between frames. */
+:root.aio-boot-3d .scene-wrap{
+  background:linear-gradient(148deg,#e4e9e5 0%,#cfdcda 50%,#a6bfc0 100%);
+  isolation:isolate;
+}
+:root.aio-boot-3d .scene-wrap #roomCanvas,
+:root.aio-boot-3d .scene-wrap #penthouseStage{
+  display:none!important;
+}
+:root.aio-boot-3d .scene-wrap .office3d-canvas{
+  opacity:0;
+  transition:opacity .36s ease;
+}
+:root.aio-stage-ready .scene-wrap .office3d-canvas{
+  opacity:1;
+}
+.aio-stage-loader{display:none;}
+:root.aio-boot-3d .aio-stage-loader{
+  position:absolute;inset:0;z-index:15;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:28px;text-align:center;pointer-events:auto;
+  background:radial-gradient(ellipse at 20% 12%,#f6f7f0 0%,#e7ece8 45%,#c7d5d1 100%);
+  color:#233c3f;
+  opacity:1;visibility:visible;
+  transition:opacity .3s ease,visibility .3s ease;
+}
+:root.aio-stage-ready .aio-stage-loader{
+  opacity:0;visibility:hidden;pointer-events:none;
+}
+.aio-loader-orbit{
+  width:72px;height:72px;border-radius:22px;margin-bottom:22px;
+  position:relative;display:grid;place-items:center;
+  background:#f9faf6;box-shadow:0 15px 48px #49625a24;
+  border:1px solid #b7cbc2;
+}
+.aio-loader-orbit span{position:absolute;width:10px;height:10px;border-radius:50%;background:#58958d;animation:aio-loader-pulse 1.25s ease-in-out infinite}
+.aio-loader-orbit span:nth-child(1){transform:translate(-18px,3px);animation-delay:0s}
+.aio-loader-orbit span:nth-child(2){transform:translate(0,-12px);animation-delay:.18s;background:#b89069}
+.aio-loader-orbit span:nth-child(3){transform:translate(18px,3px);animation-delay:.36s;background:#617f92}
+@keyframes aio-loader-pulse{0%,100%{opacity:.35;scale:.8}50%{opacity:1;scale:1.25}}
+.aio-loader-copy{width:min(100%,360px)}
+.aio-loader-eyebrow{display:block;color:#66837e;letter-spacing:2px;font:700 10px/1.5 'IBM Plex Mono',monospace;margin-bottom:9px}
+.aio-loader-copy strong{display:block;color:#1e3337;font:700 clamp(22px,2.6vw,29px)/1.2 'Space Grotesk',sans-serif;letter-spacing:-.8px}
+.aio-loader-copy p{font:500 12px/1.55 'DM Sans',sans-serif;color:#536b69;margin:12px 0 18px}
+.aio-loader-progress{height:3px;width:min(100%,220px);background:#b9c9c4;border-radius:10px;overflow:hidden;margin:0 auto}
+.aio-loader-progress span{display:block;width:34%;height:100%;background:#668f87;animation:aio-loader-sweep 1.5s ease-in-out infinite}
+@keyframes aio-loader-sweep{0%{transform:translateX(-120%)}100%{transform:translateX(410%)}}
+.aio-loader-recovery{display:none;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:18px}
+.aio-loader-recovery button,.aio-loader-recovery a{
+  appearance:none;border:1px solid #9bb5ac;border-radius:10px;background:#f6f9f5;
+  color:#244443;font:700 12px 'DM Sans',sans-serif;
+  padding:10px 14px;cursor:pointer;text-decoration:none;
+}
+.aio-stage-error .aio-loader-orbit,.aio-stage-error .aio-loader-progress{display:none}
+.aio-stage-error .aio-loader-recovery{display:flex}
+:root.aio-stage-failed .aio-stage-loader{opacity:1;visibility:visible}
+:root.aio-boot-3d .scene-wrap .room-hint{
+  z-index:6;max-width:min(85%,450px);background:#253d40cf;
+  border-color:#6789857a;box-shadow:0 7px 30px #071e1826;
+}
+:root.aio-boot-3d .scene-wrap .scene-watermark{z-index:6;color:#f3faf4bb}
+@media (max-width:750px){
+ :root.aio-boot-3d .scene-wrap{min-height:395px}
+ .aio-loader-orbit{width:64px;height:64px;margin-bottom:17px}
+ :root.aio-boot-3d .scene-wrap .room-hint{
+   bottom:12px;left:12px;right:12px;font-size:11px;text-align:center;padding:8px;
+ }
+ :root.aio-boot-3d .scene-wrap .scene-watermark{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .aio-loader-orbit span,.aio-loader-progress span{animation:none}
+ :root.aio-boot-3d .scene-wrap .office3d-canvas{transition:none}
+}
