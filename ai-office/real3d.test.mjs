@@ -96,7 +96,8 @@ try {
   assert.ok(working.every(a=>a.keyboardIK.supported&&a.keyboardIK.frames>0),
     "A GLB is missing its real shoulder→elbow→wrist chain: "+JSON.stringify(working));
   assert.ok(working.every(a=>a.keyboardIK.meanHandDistance!==null&&
-    Number.isFinite(a.keyboardIK.meanHandDistance)&&a.keyboardIK.meanHandDistance<1.25),
+    Number.isFinite(a.keyboardIK.meanHandDistance)&&a.keyboardIK.meanHandDistance<.85
+    &&a.keyboardIK.meanHandDistance<a.keyboardIK.meanUnposedDistance*.90),
     "3D hands are not being posed near any actual keyboard: "+JSON.stringify(working));
   console.log("Real-geometry seated pose joint heights",JSON.stringify(joints));
   await page.waitForFunction(()=>window.AIOOffice3D?.renderStats?.gpuGeometries>0,
@@ -146,7 +147,7 @@ try {
   assert.ok(displays.every(d=>d.screenTopY<=1.69&&d.screenHeight<.58
     &&Math.abs(d.displayX)>=.34),"Oversized center monitors are hiding seated people: "+
     JSON.stringify(displays));
-  assert.ok(displays.every(d=>d.keyboardDistance>=.45&&d.keyboardDistance<=.75),
+  assert.ok(displays.every(d=>d.keyboardDistance>=.36&&d.keyboardDistance<=.60),
     "Chairs and keyboard are physically too far apart for seated GLB arms: "+
     JSON.stringify(displays));
   const physicalSeats=await page.evaluate(()=>window.AIOAgents3D.snapshot()
