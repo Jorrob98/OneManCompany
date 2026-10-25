@@ -223,6 +223,16 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Deploy verificato:** `AI Office Cloudflare Deploy` run `40104002972` PASS, build `95cb0b2f96c4f7569f6b98f99101e1c618c4e66b`. `/preview-version.json` verificato dal runner, asset e UI live confermati. Preview: https://ai-office-api.jorrob98.workers.dev/
 - **Ancora APERTO:** avatar GLB e seduta non fotorealistici, fluidità su hardware iPhone/Windows reale non misurata, navigazione/collisioni e ragionamento AI autentico ancora da collaudare. NON 100%.
 
+### 25/10/2026 — resa workstation, gesti GLB e riduzione rendering GPU (verificata)
+
+- **Motore** `ai-office/office-real3d.mjs`: geometrie primitive con istanze condivise, materiali statici riutilizzati e gruppi di oggetti unificati; monitor 3D migliorati con pannelli/demo esplicitamente etichettati, tastiere testurizzate senza decine di tasti 3D separati.
+- **Omini**: accennati piccoli gesti di braccia/avambracci usando le ossa GLB esistenti solo in postura seduta; le animazioni si resettano tramite mixer, non si accumulano. La posizione del bacino è rimasta controllata nel test.
+- **Mobile**: hint iniziale della scena 3D più compatto e dismiss dopo il primo tocco, evitando che copra le scrivanie. Screenshot Chrome/iPhone simulato ispezionato; una persona resta parzialmente ai margini e l'inquadratura mobile resta perfettibile.
+- **Risultato prestazionale reale su Chrome SwiftShader CI**, NON su un telefono fisico: ~405 draw call e 268 geometrie GPU della baseline recente contro **93 draw call e 33 geometrie GPU** dell'ultima build. La cadenza osservata sul renderer software rimane lenta (~5 FPS), quindi **non** dichiarare fluidità 60 FPS raggiunta su hardware.
+- **Gate anti-regressioni** `ai-office/real3d.test.mjs`: limita drawcall e geometrie, controlla batch statici, movimenti arti durante seduta, view mobile, selezione, percorso meeting/desk e camera. `AI Office Studio UI` run `40233431202` e `40233427042` **PASS**.
+- **Deploy live realmente verificato**: `AI Office Cloudflare Deploy` run `40233427088` **PASS**, versione live esatta `b485c916442ef30d7cda05edae794da8b9a68700` da `/preview-version.json`; sito: https://ai-office-api.jorrob98.workers.dev/ . La documentazione successiva a questo commit non richiede nuovo deploy.
+- **Ancora aperto**: omini ancora lontani/piccoli nella vista panoramica; quarto personaggio parzialmente tagliato su iPhone, migliorare camera mobile senza zoom aggressivo; IK mano-monitor naturale non ancora completa, rendering sotto stress su dispositivi reali e inferenza AI live non certificati.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
