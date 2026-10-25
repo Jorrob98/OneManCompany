@@ -305,7 +305,7 @@ function lounge(){
 }
 // Deliberately lower/laterally-offset displays: a centered 1.36×.81m
 // monitor previously hid entire heads and torsos behind the screen.
-const workstations=[],screenPanels=[];
+const workstations=[],screenPanels=[],keyboardAnchors=[];
 function desk(x,z,rot=0,size=1){
  const grp=new THREE.Group();root.add(grp);
  grp.position.set(x,0,z);grp.rotation.y=rot;grp.scale.setScalar(size);
@@ -337,6 +337,9 @@ function desk(x,z,rot=0,size=1){
  // Contained personal objects: a notebook and small ceramic cup.
  box(grp,-side*1.02,.896,.13,.31,.014,.24,mat(0x9aa8a5,.97));
  cylinder(grp,side*1.06,.966,.22,.083,.079,.17,mat(0xd9c7b3,.85),12);
+ // Local keyboard targets become world coordinates after desk scaling/rotation.
+ // Keep rendering metadata lean: don't expose THREE groups through public info.
+ keyboardAnchors.push({grp,x,z,keyboardX,size});
  workstations.push({x,z,side,displayX,screenCenterY:1.39,screenWidth:1.025,
    screenHeight:.545,screenTopY:1.6625,tableY:workTop,
    keyboardZ:z+size*.52,chairZ:z+1.10,keyboardDistance:1.10-size*.52});
@@ -436,6 +439,56 @@ function partitionsAndLighting(){
 }
 // Seats, GLB rigs and office all inhabit the SAME metric 3D space.
 const seats=[[-6.3,3.25],[-2.95,3.25],[.55,3.25],[2.15,6.15]];
+const ikTarget=new THREE.Vector3(),ikP0=new THREE.Vector3(),ikP1=new THREE.Vector3();
+const ikP2=new THREE.Vector3(),ikDir=new THREE.Vector3(),ikPole=new THREE.Vector3();
+function closestKeyboard(actor){
+ const x=actor.slot.x,z=actor.slot.z;
+ return keyboardAnchors.reduce((best,w)=>{
+   const distance=Math.hypot(x-w.x,z-(w.z+1.1));
+   return !best||distance<best.distance?{anchor:w,distance}:best;
+ },null)?.anchor||null;
+}
+function keyboardWorldTarget(anchor,side,phase){
+ // Two different key rows so the wrists don't overlap in a single location.
+ const x=anchor.keyboardX+side*.17;
+ const y=.947+Math.sin(phase)*.008;
+ const z=.52+(side>0?.012:-.012);
+ return anchor.grp.localToWorld(new THREE.Vector3(x,y,z));
+}
+function rigWorldPosition(bone,dest){
+ return bone.getWorldPosition(dest);
+}
+// Three.js world-space analytical two-link arm guide. It respects arm bone
+// lengths, preserves the existing elbow bend direction, and blends with the
+// imported GLB idle pose. No extra meshes or new animation assets are needed.
+function guideHandToKeyboard(chain,target,weight){
+ const {upper,forearm,hand}=chain;
+ const S=rigWorldPosition(upper,ikP0);
+ const E=rigWorldPosition(forearm,ikP1);
+ const W=rigWorldPosition(hand,ikP2);
+ const first=E.distanceTo(S),second=W.distanceTo(E);
+ if(!(first>.065&&second>.065))return null;
+ const before=W.distanceTo(target);
+ const reach=ikDir.copy(target).sub(S);
+ const requested=reach.length();
+ if(requested<.01)return null;
+ const span=Math.min(requested,first+second-.018);
+ reach.multiplyScalar(1/requested);
+ // Keep the elbow on the same side of the shoulder as its animated rest pose.
+ const along=(first*first-second*second+span*span)/(2*span);
+ const offset=Math.sqrt(Math.max(.0001,first*first-along*along));
+ const pole=ikPole.copy(E).sub(S).addScaledVector(reach,-ikPole.copy(E).sub(S).dot(reach));
+ if(pole.lengthSq()<.00001)pole.set(chain.side*.28,-.20,.12).addScaledVector(reach,-pole.dot(reach));
+ pole.normalize();
+ const elbow=reach.clone().multiplyScalar(along).addScaledVector(pole,offset).add(S);
+ const desiredHand=S.clone().addScaledVector(reach,span);
+ const intensity=THREE.MathUtils.clamp(weight,0,.73);
+ aimBone(upper,forearm,elbow.sub(S),intensity);
+ aimBone(forearm,hand,desiredHand.sub(forearm.getWorldPosition(new THREE.Vector3())),intensity);
+ const after=hand.getWorldPosition(new THREE.Vector3()).distanceTo(target);
+ return {before,after,reachable:requested<=first+second,armLength:first+second};
+}
+
 function aimBone(bone,child,direction,weight){
  if(!child)return;
  const from=child.getWorldPosition(new THREE.Vector3()).sub(bone.getWorldPosition(new THREE.Vector3()));
@@ -487,6 +540,13 @@ function person(a,index){
    body.position.y+=.06-sole;
    body.updateMatrixWorld(true);
  }
+ // Match upper arm, forearm and hand by skeleton parent relationships rather
+ // than side-name guesses. Left-to-right pairing is done in world coordinates.
+ const armChains=limbs.arm.map(upper=>{
+   const forearm=limbs.forearm.find(x=>x.parent===upper);
+   const hand=forearm&&limbs.hand.find(x=>x.parent===forearm);
+   return hand?{upper,forearm,hand,side:0}:null;
+ }).filter(Boolean);
  const tag=textureDraw(340,85,(c)=>{
    c.fillStyle="#23434c";c.fillRect(0,0,340,85);
    c.font="bold 30px Arial";c.fillStyle="white";c.textAlign="center";
@@ -499,7 +559,8 @@ function person(a,index){
  halo.rotation.x=-Math.PI/2;halo.position.y=.10;g.add(halo);
  agents.set(a.id,{g,body,mixer,idle,walk,wasWalking:false,limbs,label,halo,baseY:body.position.y,
    seatY:.79,index,slot:{x,z},modelStyle:key,point:"desk",goal:"desk",sit:0,
-   workGesture:0});
+   workGesture:0,armChains,keyboardStatus:{supported:armChains.length===2,
+     meanHandDistance:null,meanUnposedDistance:null,reachableArms:0,frames:0}});
 }
 function detachAgent(id){
  const a=agents.get(id);
@@ -586,6 +647,7 @@ window.AIOAgents3D={
    position:{x:Number(a.g.position.x.toFixed(3)),z:Number(a.g.position.z.toFixed(3))},
    sittingBlend:Number(a.sit.toFixed(2)),posture:a.sit>.90?"sitting":"standing",
    workGesture:Number(a.workGesture.toFixed(2)),
+   keyboardIK:{...a.keyboardStatus},
    realGeometry:true,chairY:.805
  })),
  setMeetingSession:()=>true
@@ -894,19 +956,34 @@ function animate(t){
        a.body.updateMatrixWorld(true);
      }
    }
-   // Reserved, modest seated-at-work gestures using the existing real GLB rig.
-   // Never pose wrists when walking. AnimationMixer resets joints each frame,
-   // preventing accumulating "twisted arms" after several minutes.
+   // Move arms to the ACTUAL geometry of this employee's keyboard.
+   // The imported idle animation resets pose every frame; no cumulative
+   // twisting. Sitting fade also removes IK before any walking begins.
    a.workGesture=a.sit*(.30+.09*Math.sin(t*.0018+a.index*1.43));
-   if(a.workGesture>.01){
-     for(const arm of a.limbs.arm){
-       const forearm=a.limbs.forearm.find(b=>b.parent===arm);
-       if(!forearm)continue;
-       const side=/_l_|left/i.test(arm.name)?-1:1;
-       aimBone(arm,forearm,new THREE.Vector3(side*.43,-.46,-.78),a.workGesture);
-       const hand=a.limbs.hand.find(b=>b.parent===forearm);
-       if(hand)aimBone(forearm,hand,
-         new THREE.Vector3(side*.06,-.23,-.96),a.workGesture*.8);
+   if(a.workGesture>.01&&a.armChains.length===2){
+     const anchor=closestKeyboard(a);
+     if(anchor){
+       const order=a.armChains.slice().sort((u,v)=>
+         u.upper.getWorldPosition(new THREE.Vector3()).x-
+         v.upper.getWorldPosition(new THREE.Vector3()).x);
+       let totalBefore=0,totalAfter=0,reachable=0,success=0;
+       for(let i=0;i<order.length;i++){
+         const chain=order[i];
+         chain.side=i===0?-1:1;
+         const goal=keyboardWorldTarget(anchor,chain.side,t*.006+a.index);
+         const result=guideHandToKeyboard(chain,goal,a.workGesture*1.7);
+         if(result){
+           totalBefore+=result.before;totalAfter+=result.after;
+           reachable+=Number(result.reachable);success++;
+         }
+       }
+       if(success){
+         a.keyboardStatus.supported=true;
+         a.keyboardStatus.meanHandDistance=Number((totalAfter/success).toFixed(3));
+         a.keyboardStatus.meanUnposedDistance=Number((totalBefore/success).toFixed(3));
+         a.keyboardStatus.reachableArms=reachable;
+         a.keyboardStatus.frames++;
+       }
      }
    }
    if(canWalk){
