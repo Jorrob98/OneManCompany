@@ -318,11 +318,13 @@ function desk(x,z,rot=0,size=1){
    box(grp,sx*1.2,.42,sz*.52,.06,.72,.06,metal);
  box(grp,0,.71,.45,2.55,.021,.04,mat(0xa3afa6,.96),false);
  // One low-profile fabric mat, keyboard and mouse within arm's reach.
- box(grp,keyboardX,.906,.22,1.21,.018,.45,mat(0x35484b,.98));
- box(grp,keyboardX,.924,.24,.57,.020,.22,mat(0x28383d,.84));
- const keys=plane(grp,keyboardX,.939,.24,.55,.21,keyboardSurface());
+ // Move input devices toward the seated employee, not under the monitor
+ // at the back of a 1.5m-deep desk (previously unreachable).
+ box(grp,keyboardX,.906,.46,1.21,.018,.43,mat(0x35484b,.98));
+ box(grp,keyboardX,.924,.52,.57,.020,.22,mat(0x28383d,.84));
+ const keys=plane(grp,keyboardX,.939,.52,.55,.21,keyboardSurface());
  keys.rotation.x=-Math.PI/2;
- box(grp,keyboardX+side*.44,.92,.27,.09,.026,.145,mat(0x46595b,.77));
+ box(grp,keyboardX+side*.44,.92,.53,.09,.026,.145,mat(0x46595b,.77));
  // Slim 24-inch display: y = 1.38 and upper edge = 1.69,
  // below the approximate top of a seated 1.77m human model.
  const stem=box(grp,displayX,1.085,-.27,.055,.39,.066,metal,false);
@@ -336,7 +338,8 @@ function desk(x,z,rot=0,size=1){
  box(grp,-side*1.02,.896,.13,.31,.014,.24,mat(0x9aa8a5,.97));
  cylinder(grp,side*1.06,.966,.22,.083,.079,.17,mat(0xd9c7b3,.85),12);
  workstations.push({x,z,side,displayX,screenCenterY:1.39,screenWidth:1.025,
-   screenHeight:.545,screenTopY:1.6625,tableY:workTop});
+   screenHeight:.545,screenTopY:1.6625,tableY:workTop,
+   keyboardZ:z+size*.52,chairZ:z+1.10,keyboardDistance:1.10-size*.52});
  return grp;
 }
 function chair(x,z,rotation=0){
@@ -367,7 +370,7 @@ function deskPods(){
  carpet(-3.0,3.25,10.9,5.4,0x71827e);
  const locations=[[-6.3,2.15,0],[-2.95,2.15,0],[.55,2.15,0],[-5.05,5.05,0],[-1.40,5.05,0],[2.15,5.05,0]];
  for(const [x,z,rot] of locations){
-   desk(x,z,rot,.9);chair(x,z+1.36);
+   desk(x,z,rot,.9);chair(x,z+1.10);
  }
  // workstation dividers, storage, tray, pot
  for(const x of [-4.8,-1.5,1.82]){
@@ -432,7 +435,7 @@ function partitionsAndLighting(){
  for(let i=0;i<4;i++)pot(-8.2+i*.38,6.2,.62+(i%2)*.17);
 }
 // Seats, GLB rigs and office all inhabit the SAME metric 3D space.
-const seats=[[-6.3,3.51],[-2.95,3.51],[.55,3.51],[2.15,6.41]];
+const seats=[[-6.3,3.25],[-2.95,3.25],[.55,3.25],[2.15,6.15]];
 function aimBone(bone,child,direction,weight){
  if(!child)return;
  const from=child.getWorldPosition(new THREE.Vector3()).sub(bone.getWorldPosition(new THREE.Vector3()));
