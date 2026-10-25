@@ -242,6 +242,17 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Deploy online realmente verificato:** run `40240313040` PASS, Cloudflare Worker esistente e stesso URL `https://ai-office-api.jorrob98.workers.dev/`; commit pubblicato `1b51f868cbdbf56cf3df751842fb61f62e985a92` verificato tramite `/preview-version.json`.
 - **Ancora APERTO e visibile:** monitor oscurano alcuni avatar; postura/mano-tastiera non naturale, arredi ancora semplici, resa fotorealistica non raggiunta. Controllo FPS sul telefono fisico non effettuato. Non confondere test tecnici verdi con un prodotto al 100%.
 
+### 25/10/2026 — intervento strutturale monitor, ergonomia e arredi 3D
+
+- **Monitor**: ridotti da oltre 1.36 × .81 m a 1.12 × .62 m con area visiva da 1.025 × .545 m; centri spostati lateralmente verso le estremità della scrivania e abbassati a quota 1.385 m. I monitor non coprono più la testa delle persone nella camera desktop/mobile testata.
+- **Test prospettico nuovo**: `info.visualAudit()` proietta le ossa delle teste GLB nella camera Three.js e misura mediante raycast le intersezioni con i monitor. Risultato nelle run `40241556806`, `40241559968`: **4/4 teste nel frame, 0/4 oscurate** su desktop e mobile.
+- **Ergonomia**: sedie fisiche e punti di seduta GLB avvicinati dalla vecchia distanza di 1.36 m a 1.10 m dal centro della scrivania; le tastiere sono state spostate verso chi le utilizza, con distanza operativa **0.632 m** dalla sedia. Il test controlla che le distanze siano nell'intervallo .45–.75 m e che il bacino mantenga il contatto con la seduta a y=.79.
+- **Arredi**: schienali alleggeriti e tessuto chiaro, piani delle scrivanie e sedute realizzati con geometrie bevel `RoundedBoxGeometry` riutilizzabili senza creare un nuovo progetto o impattare il corretto batching delle sfere/cilindri. Screenshot reali desktop/mobile ispezionati.
+- **Prestazioni nell'ambiente di test**: ultima run registrata 99 draw call e 42 geometrie GPU; target 60/30 FPS non significa FPS certificati su dispositivi reali.
+- **QA**: `AI Office Studio UI` run `40241556806` e `40241559968` **PASS**; test percorso agente desk → meeting → desk, modifica roster, geometrie, allineamento rig e mobile senza nuove regressioni.
+- **Distribuzione reale**: `AI Office Cloudflare Deploy` run `40241556774` **PASS**; stesso Worker `ai-office-api`, URL https://ai-office-api.jorrob98.workers.dev/; `/preview-version.json` verificato online, commit frontend `c3cefdaf6f7e11af589f7bad14efc955fc2dc52b`.
+- **Ancora aperto**: rig delle mani senza IK precisa ai tasti, gambe e testa ancora stilizzate, look dell'ambiente non fotorealistico, occlusioni di braccia/torace possibili da certe camere, FPS iPhone fisico non misurati. **Non** dichiarare grafica definitivamente completata.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
