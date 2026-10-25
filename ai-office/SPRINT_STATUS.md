@@ -233,6 +233,15 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Deploy live realmente verificato**: `AI Office Cloudflare Deploy` run `40233427088` **PASS**, versione live esatta `b485c916442ef30d7cda05edae794da8b9a68700` da `/preview-version.json`; sito: https://ai-office-api.jorrob98.workers.dev/ . La documentazione successiva a questo commit non richiede nuovo deploy.
 - **Ancora aperto**: omini ancora lontani/piccoli nella vista panoramica; quarto personaggio parzialmente tagliato su iPhone, migliorare camera mobile senza zoom aggressivo; IK mano-monitor naturale non ancora completa, rendering sotto stress su dispositivi reali e inferenza AI live non certificati.
 
+### 25/10/2026 — audit ufficio 3D: bug geometrie miste e inquadratura mobile, entrambi corretti
+
+- **Bug geometrico P0 riscontrato leggendo il codice:** ottimizzazione `batchFurniture()` aggregava elementi per materiale ma non per geometria; `InstancedMesh(unitBox,...)` trasformava sferiche/cilindri (piante, piedi di sedie, dettagli circolari) in cubi. Corretto con chiavi che includono `geometry.uuid` e usando `first.geometry` nel batch. La forma reale rimane invariata; il guadagno prestazionale di instancing si conserva.
+- **Nuovo gate di regressione:** `real3d.test.mjs` fallisce se mescola geometrie: test verificati `mixedGeometryGroups=0`, 309 box / 176 cilindri / 64 sfere in 32 batch da 549 istanze. Drawcall desktop test 97 e 41 geometrie GPU. Verificato su screenshot desktop prima/dopo: cilindri e foglie nuovamente tondeggianti.
+- **Bug mobile P0:** vista `postazioni` precedente centrata vicino alle prime scrivanie con distanza fissa e quarto avatar ai margini. `fitMobileTeam()` calcola centro e distanza dalle posizioni fisiche dei quattro agenti e proietta altezza piedi/testa nella vera camera 3D. Browser CI: `count=4`, `distance=11.5`, `maxAbsX=.779`, `maxAbsY=.801`; margini interni verificati.
+- **Test/UI:** run `40240318588` e `40240312914` entrambi PASS; incluso caricamento senza vecchia foto, rig/seduta, percorso, rimozione agenti, camera e mobile. Screenshot reali ispezionati: `office-real3d-scene.png` e `office-real3d-mobile.png` (test del commit).
+- **Deploy online realmente verificato:** run `40240313040` PASS, Cloudflare Worker esistente e stesso URL `https://ai-office-api.jorrob98.workers.dev/`; commit pubblicato `1b51f868cbdbf56cf3df751842fb61f62e985a92` verificato tramite `/preview-version.json`.
+- **Ancora APERTO e visibile:** monitor oscurano alcuni avatar; postura/mano-tastiera non naturale, arredi ancora semplici, resa fotorealistica non raggiunta. Controllo FPS sul telefono fisico non effettuato. Non confondere test tecnici verdi con un prodotto al 100%.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
