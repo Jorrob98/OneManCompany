@@ -137,6 +137,12 @@ try {
   assert.ok(displays.every(d=>d.screenTopY<=1.69&&d.screenHeight<.58
     &&Math.abs(d.displayX)>=.34),"Oversized center monitors are hiding seated people: "+
     JSON.stringify(displays));
+  assert.ok(displays.every(d=>d.keyboardDistance>=.45&&d.keyboardDistance<=.75),
+    "Chairs and keyboard are physically too far apart for seated GLB arms: "+
+    JSON.stringify(displays));
+  const physicalSeats=await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .map(a=>({id:a.id,point:a.position,slot:a.slot})));
+  assert.ok(physicalSeats.length===4,"Physical chair geometry lost a seated worker");
   const desktopSight=await page.evaluate(()=>window.AIOOffice3D.visualAudit());
   console.log("3D seated-employee head visibility (desktop)",JSON.stringify(desktopSight));
   assert.equal(desktopSight.agents.length,4,"3D visibility inspection lost employees");
