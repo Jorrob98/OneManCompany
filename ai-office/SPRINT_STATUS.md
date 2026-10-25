@@ -253,6 +253,17 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Distribuzione reale**: `AI Office Cloudflare Deploy` run `40241556774` **PASS**; stesso Worker `ai-office-api`, URL https://ai-office-api.jorrob98.workers.dev/; `/preview-version.json` verificato online, commit frontend `c3cefdaf6f7e11af589f7bad14efc955fc2dc52b`.
 - **Ancora aperto**: rig delle mani senza IK precisa ai tasti, gambe e testa ancora stilizzate, look dell'ambiente non fotorealistico, occlusioni di braccia/torace possibili da certe camere, FPS iPhone fisico non misurati. **Non** dichiarare grafica definitivamente completata.
 
+### 25/10/2026 — gesti delle braccia guidati dalla tastiera, camera mobile stabilizzata
+
+- **Codice direttamente modificato nel progetto esistente:** `ai-office/office-real3d.mjs` con cinematica guidata a due segmenti per spalla/gomito/polso a partire dagli ossi GLB reali. Punti di riferimento derivati dalle tastiere geometriche con trasformazioni mondiali; non vengono inventate animazioni GLB esterne.
+- **Fattibilità e limiti:** soluzione attenuata (blending massimo 0.73) usando ossa/passi delle clip esistenti e selezione dei due lati tramite coordinate mondiali. Non consiste in un'animazione completa delle singole dita, e non si devono dichiarare tutte le mani esattamente sui tasti.
+- **Intervento ergonomico:** tastiere avanzate fino al bordo dei tavoli e sedie/ancoraggi avatar avvicinati, raggiungendo 0.423 m fra i centri della sedia e della tastiera; contatto anca/seduta y=0.79 preservato.
+- **Dato misurato nel Chrome CI software:** distanze medie polso→tastiera dopo IK tra **0.161 e 0.290 m**, contro **0.460–0.514 m** a posa ripristinata (antecedente a IK nello stesso frame); prima degli interventi risultavano circa 0.35–0.46 m. Target reale ancora oltre la lunghezza delle braccia: `reachableArms=0`, gap di 0.105–0.164 m. Restano necessarie rifiniture/rig dedicati per il contatto preciso.
+- **Regressione mobile rilevata dai test e corretta:** al passaggio desktop→portrait la camera interpolava troppo lentamente e tagliava momentaneamente le teste. Il resize applica immediatamente posizione e lookAt del preset mobile, mentre l'inseguimento ordinario rimane fluido.
+- **Criteri verificati:** `ai-office/real3d.test.mjs` ora misura realmente ossa delle mani, distanza e miglioramento rispetto alla posizione iniziale, disattivazione gesture durante riunione/cammino, seduta, roster e camera. `AI Office Studio UI` runs `40243063376` e `40243059153` **PASS** su desktop e viewport iPhone (Chrome emulato).
+- **Preview pubblicata e verificata:** `AI Office Cloudflare Deploy` run `40243059049` **PASS**, commit pubblico `86ad2cb26eaf274266ecebf984caceefc62653f5`, URL https://ai-office-api.jorrob98.workers.dev/ e verifica `/preview-version.json`. Stesso Worker esistente. Worker status `ready=true` non certifica comunque la generazione AI autorizzata end-to-end.
+- **Problemi ancora aperti:** clipping dita, assenza di finger IK e vera interazione con tastiera, locomozione/navmesh, FPS su hardware iPhone, AI live e sincronizzazione dei dati. NON dichiarare progetto finito.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
