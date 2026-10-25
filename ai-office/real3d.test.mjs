@@ -89,6 +89,15 @@ try {
   const working=await page.evaluate(()=>window.AIOAgents3D.snapshot());
   assert.ok(working.every(a=>a.workGesture>.15&&a.workGesture<.43),
     "Rigged employees have frozen/malformed typing gestures: "+JSON.stringify(working));
+  // A typed gesture is only genuine if it moves the ACTUAL GLB wrist toward
+  // keyboard surfaces. This test rejects frozen hands and false IK readiness.
+  console.log("Physical GLB keyboard reaching",JSON.stringify(
+    working.map(a=>({id:a.id,ik:a.keyboardIK}))));
+  assert.ok(working.every(a=>a.keyboardIK.supported&&a.keyboardIK.frames>0),
+    "A GLB is missing its real shoulder→elbow→wrist chain: "+JSON.stringify(working));
+  assert.ok(working.every(a=>a.keyboardIK.meanHandDistance!==null&&
+    Number.isFinite(a.keyboardIK.meanHandDistance)&&a.keyboardIK.meanHandDistance<1.25),
+    "3D hands are not being posed near any actual keyboard: "+JSON.stringify(working));
   console.log("Real-geometry seated pose joint heights",JSON.stringify(joints));
   await page.waitForFunction(()=>window.AIOOffice3D?.renderStats?.gpuGeometries>0,
     null,{timeout:10000});
@@ -174,6 +183,8 @@ try {
   const arrived=await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1"));
   assert.equal(arrived.point,"meeting");
   assert.ok(arrived.sittingBlend<.2,"Agent is still seated in the meeting room");
+  assert.ok(arrived.workGesture<.08,
+    "Keyboard arm animation keeps running after agent leaves chair");
   await page.waitForFunction(()=>{
     const a=window.AIOAgents3D.snapshot().find(a=>a.id==="a1");
     const c=window.AIOOffice3D.cameraTarget;
