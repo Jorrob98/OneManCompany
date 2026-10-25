@@ -86,6 +86,9 @@ try {
     "Real GLB rig lacks both seated legs: "+JSON.stringify(joints));
   assert.ok(joints.hips.every(y=>Math.abs(y-joints.seatY)<.10),
     "Pelvis is not contacting the 3D chair: "+JSON.stringify(joints));
+  const working=await page.evaluate(()=>window.AIOAgents3D.snapshot());
+  assert.ok(working.every(a=>a.workGesture>.15&&a.workGesture<.43),
+    "Rigged employees have frozen/malformed typing gestures: "+JSON.stringify(working));
   console.log("Real-geometry seated pose joint heights",JSON.stringify(joints));
   await page.waitForFunction(()=>window.AIOOffice3D?.renderStats?.gpuGeometries>0,
     null,{timeout:10000});
@@ -99,8 +102,13 @@ try {
   assert.equal(desktopPerf.fpsBudget,60);
   assert.ok(desktopPerf.pixelRatio>0&&desktopPerf.pixelRatio<=1.65,
     "Desktop renderer pixel budget not controlled: "+JSON.stringify(desktopPerf));
-  assert.ok(desktopPerf.renderer.gpuGeometries<800,
-    "Too many unique geometries; shared GPU box reuse regressed: "+JSON.stringify(desktopPerf));
+  assert.ok(desktopPerf.renderer.gpuGeometries<85,
+    "Primitive geometry sharing has regressed: "+JSON.stringify(desktopPerf));
+  assert.ok(desktopPerf.renderer.drawCalls<165,
+    "Static furniture GPU instancing has regressed: "+JSON.stringify(desktopPerf));
+  const batching=await page.evaluate(()=>window.AIOOffice3D.batching);
+  assert.ok(batching.sourceMeshes>110&&batching.drawBatches>3,
+    "Static furniture batching not active: "+JSON.stringify(batching));
   await page.waitForFunction(()=>window.AIOOffice3D.metrics?.sampleCount>=12,
     null,{timeout:15000});
   const observedDesktop=await page.evaluate(()=>window.AIOOffice3D.metrics);
@@ -116,6 +124,9 @@ try {
     "Camera focus preset is not interactive");
   await page.waitForTimeout(450);
   await page.screenshot({path:"ai-office/office-real3d-desktop.png"});
+  await page.locator(".office3d-canvas").click({position:{x:13,y:14}});
+  await page.waitForFunction(()=>document.querySelector(".room-hint")
+    ?.classList.contains("aio-hint-dismissed"),null,{timeout:3000});
   await page.locator(".scene-wrap").screenshot({path:"ai-office/office-real3d-scene.png"});
   // Real focus must follow the employee's ACTUAL position throughout a walk,
   // instead of remaining fixed at the desk where the camera mode was selected.
