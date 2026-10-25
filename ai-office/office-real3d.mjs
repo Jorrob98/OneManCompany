@@ -56,8 +56,34 @@ let azimuth=1.04,elevation=.33,distance=21,dragging=false,dragDistance=0,startX=
 const target=new THREE.Vector3(0,1.15,0);
 const colors={ink:0x111827,stone:0x27303d,slate:0x384352,wood:0x9a6a50,woodLight:0xc3926b,
  copper:0xe9a16a,glass:0x6c9db8,blue:0x4189d9,cyan:0x65e1df,violet:0x9a8cf1,cream:0xffe3b7};
-const mat=(c,roughness=.63,metalness=.02)=>new THREE.MeshStandardMaterial({color:c,roughness,metalness});
-const unitBox=new THREE.BoxGeometry(1,1,1); // shared GPU geometry for architectural boxes
+// Share static materials and geometry so dozens of repeated furnishings
+// can be submitted as one WebGL instance draw instead of separate meshes.
+const materialCache=new Map(),geometryCache=new Map(),batchableGeometry=new Set();
+function mat(c,roughness=.63,metalness=.02){
+ const key=[c,roughness,metalness].join(":");
+ if(!materialCache.has(key))materialCache.set(key,
+   new THREE.MeshStandardMaterial({color:c,roughness,metalness}));
+ return materialCache.get(key);
+}
+const unitBox=new THREE.BoxGeometry(1,1,1);
+batchableGeometry.add(unitBox);
+function staticPrimitive(key,factory){
+ if(!geometryCache.has(key)){
+   const geo=factory();geometryCache.set(key,geo);batchableGeometry.add(geo);
+ }
+ return geometryCache.get(key);
+}
+function sphereGeometry(segments=16,vertical=12){
+ return staticPrimitive("sphere:"+segments+":"+vertical,
+   ()=>new THREE.SphereGeometry(1,segments,vertical));
+}
+function cylinderGeometry(rTop,rBottom,sides=16){
+ const max=Math.max(rTop,rBottom,.0001);
+ const upper=Number((rTop/max).toFixed(4)),lower=Number((rBottom/max).toFixed(4));
+ const geometry=staticPrimitive("cylinder:"+upper+":"+lower+":"+sides,
+   ()=>new THREE.CylinderGeometry(upper,lower,1,sides));
+ return {geometry,max};
+}
 const dark=mat(0x151c27,.57,.32),darker=mat(0x0b111a,.62,.28),metal=mat(0x343f4a,.39,.78),
 chrome=mat(0x8b9aa4,.27,.85),wood=mat(colors.wood,.7),woodPale=mat(colors.woodLight,.72),floorMat=mat(0x292f39,.2,.35),
 sand=mat(0x77736c,.86),linen=mat(0x65717a,.96),warm=mat(0xe3b57f,.8),
@@ -73,16 +99,20 @@ function box(parent,x,y,z,w,h,d,material,shadow=true){
  m.position.set(x,y,z);m.castShadow=shadow;m.receiveShadow=true;parent.add(m);return m;
 }
 function cylinder(parent,x,y,z,rTop,rBottom,height,material,sides=16){
- const m=new THREE.Mesh(new THREE.CylinderGeometry(rTop,rBottom,height,sides),material);
+ const entry=cylinderGeometry(rTop,rBottom,sides);
+ const m=new THREE.Mesh(entry.geometry,material);
+ m.scale.set(entry.max,height,entry.max);
  m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
 }
 function sphere(parent,x,y,z,r,material,segments=16){
- const m=new THREE.Mesh(new THREE.SphereGeometry(r,segments,12),material);
+ const m=new THREE.Mesh(sphereGeometry(segments,12),material);
+ m.scale.setScalar(r);
  m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;
 }
 function strip(parent,a,b,r,material,sides=8){
  const delta=new THREE.Vector3().subVectors(new THREE.Vector3(...b),new THREE.Vector3(...a));
- const obj=new THREE.Mesh(new THREE.CylinderGeometry(r,r,delta.length(),sides),material);
+ const obj=new THREE.Mesh(cylinderGeometry(1,1,sides).geometry,material);
+ obj.scale.set(r,delta.length(),r);
  obj.position.copy(new THREE.Vector3(...a).add(new THREE.Vector3(...b)).multiplyScalar(.5));
  obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
  parent.add(obj);return obj;
@@ -178,8 +208,9 @@ function pot(x,z,scale=1){
  for(let j=0;j<8;j++){
    const angle=j*Math.PI*2/8,rad=.25+(j%2)*.10;
    strip(grp,[0,.46*scale,0],[Math.cos(angle)*rad*scale,(.85+(j%3)*.09)*scale,Math.sin(angle)*rad*scale],.014*scale,foliage[0]);
-   const leaf=new THREE.Mesh(new THREE.SphereGeometry(.22*scale,8,6),leafMaterial[j%3]);
-   leaf.scale.set(.47,.85,.34);leaf.position.set(Math.cos(angle)*rad*scale,.87*scale+(j%3)*.06*scale,Math.sin(angle)*rad*scale);
+   const leaf=new THREE.Mesh(sphereGeometry(8,6),leafMaterial[j%3]);
+   leaf.scale.set(.47*.22*scale,.85*.22*scale,.34*.22*scale);
+   leaf.position.set(Math.cos(angle)*rad*scale,.87*scale+(j%3)*.06*scale,Math.sin(angle)*rad*scale);
    leaf.rotation.z=(j%2?-.5:.5);grp.add(leaf);
  }
  return grp;
@@ -462,7 +493,7 @@ function batchFurniture(){
   root.updateMatrixWorld(true);
   const buckets=new Map();
   root.traverse(o=>{
-    if(!o.isMesh || o.geometry!==unitBox || o.material.transparent)return;
+    if(!o.isMesh || !batchableGeometry.has(o.geometry) || o.material.transparent)return;
     const k=o.material.uuid+":"+String(o.castShadow)+":"+String(o.receiveShadow);
     if(!buckets.has(k))buckets.set(k,[]);
     buckets.get(k).push(o);
@@ -485,7 +516,8 @@ function batchFurniture(){
     batches++;
     objects+=bucket.length;
   }
-  info.batching={sourceMeshes:objects,drawBatches:batches};
+  info.batching={sourceMeshes:objects,drawBatches:batches,
+    cachedGeometries:geometryCache.size,sharedMaterials:materialCache.size};
 }
 function selectAgent(id){
  bridge.select(id);syncPeople();
