@@ -132,6 +132,16 @@ try {
   assert.equal(await page.evaluate(()=>window.AIOOffice3D.cameraMode),"postazioni",
     "Camera focus preset is not interactive");
   await page.waitForTimeout(450);
+  const displays=await page.evaluate(()=>window.AIOOffice3D.workstations);
+  assert.equal(displays.length,6,"Office workstation count changed");
+  assert.ok(displays.every(d=>d.screenTopY<=1.69&&d.screenHeight<.58
+    &&Math.abs(d.displayX)>=.34),"Oversized center monitors are hiding seated people: "+
+    JSON.stringify(displays));
+  const desktopSight=await page.evaluate(()=>window.AIOOffice3D.visualAudit());
+  console.log("3D seated-employee head visibility (desktop)",JSON.stringify(desktopSight));
+  assert.equal(desktopSight.agents.length,4,"3D visibility inspection lost employees");
+  assert.ok(desktopSight.agents.filter(a=>a.inFrame).length>=3,
+    "Default workstation camera cannot see the actual actors: "+JSON.stringify(desktopSight));
   await page.screenshot({path:"ai-office/office-real3d-desktop.png"});
   await page.locator(".office3d-canvas").click({position:{x:13,y:14}});
   await page.waitForFunction(()=>document.querySelector(".room-hint")
@@ -228,6 +238,11 @@ try {
   assert.ok(teamFraming.distance<=31,
     "Automatic mobile team framing is outside safe zoom range: "+JSON.stringify(teamFraming));
   console.log("Mobile all-four-employee framing",JSON.stringify(teamFraming));
+  const mobileSight=await page.evaluate(()=>window.AIOOffice3D.visualAudit());
+  console.log("3D seated-employee head visibility (mobile)",JSON.stringify(mobileSight));
+  assert.equal(mobileSight.agents.length,4,"Mobile avatar visibility sample lost an agent");
+  assert.ok(mobileSight.agents.every(a=>a.inFrame),
+    "An avatar's HEAD is outside the mobile frame: "+JSON.stringify(mobileSight));
   const bounds=await page.evaluate(()=>({
     pageWidth:document.documentElement.scrollWidth,
     viewport:innerWidth,
