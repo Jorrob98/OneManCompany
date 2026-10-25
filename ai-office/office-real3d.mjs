@@ -647,6 +647,9 @@ function pointXY(event){
 const activePointers=new Map();
 let previousPinch=null;
 function pointerDown(e){
+ // Hide onboarding tooltip after the first genuine 3D interaction; a large
+ // persistent hint previously covered the lower workstations on iPhone.
+ document.querySelector(".room-hint")?.classList.add("aio-hint-dismissed");
  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
  dragging=true;startX=lastX=e.clientX;startY=lastY=e.clientY;dragDistance=0;
  if(activePointers.size>1){dragDistance=999;previousPinch=null;}
@@ -895,7 +898,7 @@ async function boot(){
   syncPeople();setMood(bridge.getMood());cameraUpdate();
   mount.insertBefore(renderer.domElement,original);
   original.style.visibility="hidden";mount.classList.add("real3d-active");
-  document.querySelector(".room-hint").innerHTML="<span class='hint-icon'>⌖</span> Trascina per ruotare · Tocca un agente";
+  document.querySelector(".room-hint").innerHTML="<span class='hint-icon'>⌖</span> Ruota · Tocca";
   const live=document.querySelector(".scene-label");
   if(live)live.textContent="3D INTERATTIVO · ANTEPRIMA";
   hookup();resize();animate(0);
