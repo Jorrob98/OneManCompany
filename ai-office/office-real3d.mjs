@@ -429,7 +429,7 @@ function person(a,index){
  const mixer=new THREE.AnimationMixer(body),sex=key[0],idle=mixer.clipAction(clips[sex].idle);
  idle.play();
  const walk=mixer.clipAction(clips[sex].walk);walk.enabled=true;
- const limbs={thigh:[],calf:[],foot:[],arm:[],forearm:[]};
+ const limbs={thigh:[],calf:[],foot:[],arm:[],forearm:[],hand:[]};
  body.traverse(obj=>{
    if(obj.isMesh){obj.castShadow=true;obj.userData.agentId=a.id;interactive.push(obj);}
    if(!obj.isBone)return;
@@ -439,6 +439,7 @@ function person(a,index){
    else if(/foot|ankle/.test(n))limbs.foot.push(obj);
    else if(/forearm|lowerarm/.test(n))limbs.forearm.push(obj);
    else if(/upperarm/.test(n))limbs.arm.push(obj);
+   else if(/hand|wrist/.test(n))limbs.hand.push(obj);
  });
  // Runtime GLB skeletons can extend far beyond the bind-pose bounding box.
  // Calibrate using the ACTUAL animated hip-to-ankle distance, in this same 3D
@@ -469,7 +470,8 @@ function person(a,index){
    new THREE.MeshBasicMaterial({color:0x45a19e,side:THREE.DoubleSide}));
  halo.rotation.x=-Math.PI/2;halo.position.y=.10;g.add(halo);
  agents.set(a.id,{g,body,mixer,idle,walk,wasWalking:false,limbs,label,halo,baseY:body.position.y,
-   seatY:.79,index,slot:{x,z},modelStyle:key,point:"desk",goal:"desk",sit:0});
+   seatY:.79,index,slot:{x,z},modelStyle:key,point:"desk",goal:"desk",sit:0,
+   workGesture:0});
 }
 function detachAgent(id){
  const a=agents.get(id);
@@ -535,6 +537,7 @@ window.AIOAgents3D={
    id,point:a.point,goal:a.goal,slot:a.index,modelStyle:a.modelStyle,
    position:{x:Number(a.g.position.x.toFixed(3)),z:Number(a.g.position.z.toFixed(3))},
    sittingBlend:Number(a.sit.toFixed(2)),posture:a.sit>.90?"sitting":"standing",
+   workGesture:Number(a.workGesture.toFixed(2)),
    realGeometry:true,chairY:.805
  })),
  setMeetingSession:()=>true
@@ -797,6 +800,21 @@ function animate(t){
        const hip=a.limbs.thigh.reduce((v,b)=>v+b.getWorldPosition(new THREE.Vector3()).y,0)/a.limbs.thigh.length;
        a.body.position.y+=THREE.MathUtils.clamp((a.seatY-hip)*a.sit,-.45,.45);
        a.body.updateMatrixWorld(true);
+     }
+   }
+   // Reserved, modest seated-at-work gestures using the existing real GLB rig.
+   // Never pose wrists when walking. AnimationMixer resets joints each frame,
+   // preventing accumulating "twisted arms" after several minutes.
+   a.workGesture=a.sit*(.30+.09*Math.sin(t*.0018+a.index*1.43));
+   if(a.workGesture>.01){
+     for(const arm of a.limbs.arm){
+       const forearm=a.limbs.forearm.find(b=>b.parent===arm);
+       if(!forearm)continue;
+       const side=/_l_|left/i.test(arm.name)?-1:1;
+       aimBone(arm,forearm,new THREE.Vector3(side*.43,-.46,-.78),a.workGesture);
+       const hand=a.limbs.hand.find(b=>b.parent===forearm);
+       if(hand)aimBone(forearm,hand,
+         new THREE.Vector3(side*.06,-.23,-.96),a.workGesture*.8);
      }
    }
    if(canWalk){
