@@ -133,32 +133,83 @@ function textureDraw(w,h,painter){
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
  texture.anisotropy=renderer?.capabilities.getMaxAnisotropy?.()||1;return texture;
 }
+// Screen graphics deliberately identify themselves as demo; they are visual
+// surfaces, not a fake live dashboard or fabricated agent results.
+const displayCache=new Map();
 function screenSurface(parent,x,y,z,w,h,kind="code",rotationY=0){
- const tx=textureDraw(512,300,(g,W,H)=>{
-   g.fillStyle="#091626";g.fillRect(0,0,W,H);
-   const grad=g.createLinearGradient(0,0,W,H);
-   grad.addColorStop(0,"#1e3558");grad.addColorStop(1,"#08111f");
-   g.fillStyle=grad;g.fillRect(13,14,W-26,H-28);
-   g.strokeStyle="#4fa3df55";g.strokeRect(16,17,W-32,H-34);
-   g.fillStyle="#cee6ff";g.font="bold 20px Arial";
-   g.fillText(kind==="chart"?"OPERATIONS / ANALYTICS":kind==="board"?"STUDIO STRATEGY":kind==="city"?"ACTIVE WORKSPACE":"AGENT CONSOLE",31,48);
-   g.fillStyle="#64d3e8";g.fillRect(30,62,108,3);
-   if(kind==="code"||kind==="city"){
-     for(let i=0;i<11;i++){g.fillStyle=["#8eb6c0","#62cdbb","#c6a7c8"][i%3];g.globalAlpha=.48+i%3*.14;
-       g.fillRect(32,86+i*17,60+((i*39)%250),5);}
-     g.globalAlpha=1;
-     g.fillStyle="#4ed2cc";g.fillRect(310,92,165,98);g.fillStyle="#1b3956";g.fillRect(320,103,144,77);
-     g.strokeStyle="#8ee7c8";g.lineWidth=3;g.beginPath();
-     for(let i=0;i<12;i++){let xx=325+i*12,yy=158-Math.sin(i*.7)*18-i*.8;if(i===0)g.moveTo(xx,yy);else g.lineTo(xx,yy);}g.stroke();
-   }else{
-     g.strokeStyle="#85c8f0";g.lineWidth=4;g.beginPath();
-     for(let i=0;i<12;i++){let xx=37+i*38,yy=222-Math.sin(i*.68)*28-(i*3);if(i===0)g.moveTo(xx,yy);else g.lineTo(xx,yy);}g.stroke();
-     for(let i=0;i<9;i++){g.fillStyle=i%3===0?"#6ce6c9":"#669bd3";g.fillRect(50+i*48,247-(((i*19)%80)),15,((i*19)%80));}
+ if(!displayCache.has(kind)){
+  const titles={code:"ATTIVITA",board:"PROGETTI",chart:"PANORAMICA",city:"WORKSPACE"};
+  const title=titles[kind]||"WORKSPACE";
+  const tx=textureDraw(512,300,(g,W,H)=>{
+   const rect=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};
+   const round=(x,y,w,h,r,c)=>{
+     g.fillStyle=c;g.beginPath();g.roundRect(x,y,w,h,r);g.fill();
+   };
+   rect(0,0,W,H,"#111e28");
+   rect(0,0,W,62,"#1b3040");
+   round(20,19,20,20,5,"#b8dac9");
+   g.fillStyle="#ecf8ee";g.font="700 24px Arial";g.fillText(title,55,41);
+   round(377,20,111,24,10,"#294d4b");
+   g.fillStyle="#c1eadc";g.font="700 12px Arial";g.fillText("●  DEMO",394,37);
+   const values=kind==="chart"?["24","08","92%"]:kind==="board"?["06","03","02"]:["12","04","08"];
+   const subtitles=kind==="chart"?["PANNELLI","AREA AI","REVISIONI"]:
+     kind==="board"?["ATTIVI","IN CORSO","IN ATTESA"]:["APERTI","PRIORITA","ARCHIVIATI"];
+   const tones=["#abdbcd","#9cbcdf","#e3c5a3"];
+   for(let i=0;i<3;i++){
+     const x=20+i*160;
+     round(x,78,151,91,9,"#203846");
+     rect(x+12,95,4,14,tones[i]);
+     g.fillStyle="#b7cbd3";g.font="700 13px Arial";g.fillText(subtitles[i],x+24,107);
+     g.fillStyle="#f2f4ee";g.font="700 37px Arial";g.fillText(values[i],x+17,151);
    }
-   g.fillStyle="#91afc4";g.font="13px Arial";g.fillText("VISUAL DATA · DEMO",32,H-18);
- });
- const material=new THREE.MeshBasicMaterial({map:tx,side:THREE.DoubleSide,toneMapped:false});
- return plane(parent,x,y,z,w,h,material,rotationY);
+   round(20,183,472,100,9,"#1b303d");
+   g.fillStyle="#abc4c9";g.font="700 14px Arial";g.fillText("FLUSSO OPERATIVO",36,208);
+   g.fillStyle="#91b7ac";g.font="11px Arial";g.fillText("ANTEPRIMA VISIVA",359,207);
+   if(kind==="code"||kind==="city"){
+     for(let i=0;i<4;i++){
+       const y=225+i*14;
+       round(35,y,14,6,2,tones[i%3]);
+       round(59,y,185-i*19,6,2,"#50727a");
+       round(280,y,140+i*9,6,2,"#344f5d");
+     }
+   }else{
+     g.strokeStyle="#98ddc5";g.lineWidth=4;
+     g.beginPath();
+     for(let i=0;i<22;i++){
+       const px=36+i*20,py=251-((Math.sin(i*.48)+.4*Math.cos(i*.91))*19+i*.62);
+       if(i===0)g.moveTo(px,py);else g.lineTo(px,py);
+     }
+     g.stroke();
+     for(let i=0;i<9;i++){
+       round(40+i*49,257-(i%3)*6,27,5,2,i%2?"#668d9e":"#b4cfc2");
+     }
+   }
+  });
+  displayCache.set(kind,new THREE.MeshBasicMaterial({
+   map:tx,side:THREE.DoubleSide,toneMapped:false
+  }));
+ }
+ return plane(parent,x,y,z,w,h,displayCache.get(kind),rotationY);
+}
+let keyboardMaterial=null;
+function keyboardSurface(){
+ if(!keyboardMaterial){
+   const tx=textureDraw(256,92,(g)=>{
+     g.fillStyle="#23343d";g.fillRect(0,0,256,92);
+     g.fillStyle="#293f49";g.fillRect(5,6,246,80);
+     for(let row=0;row<4;row++){
+       const len=row===3?9:13,space=row===3?23:17;
+       for(let k=0;k<len;k++){
+         const wide=row===3&&k===4?54:12;
+         const x=12+k*space+(row%2)*3,y=12+row*18;
+         g.fillStyle=k===3&&row===0?"#6ca497":"#a0b4b8";
+         g.fillRect(x,y,wide,10);
+       }
+     }
+   });
+   keyboardMaterial=new THREE.MeshBasicMaterial({map:tx,side:THREE.DoubleSide,toneMapped:false});
+ }
+ return keyboardMaterial;
 }
 function roundedPanel(parent,x,y,z,w,h,d,material){
  box(parent,x,y,z,w,h,d,material);
@@ -252,7 +303,9 @@ function desk(x,z,rot=0,size=1){
  box(grp,0,.69,.45,2.6,.025,.045,neonWarm,false);
  // fabric desk pad, keyboard and mouse
  box(grp,.16,.902,.27,1.5,.025,.48,mat(0x29313f,.84));
- box(grp,-.2,.92,.3,.5,.026,.16,mat(0x96a5ae,.7));
+ box(grp,-.2,.92,.3,.57,.024,.22,mat(0x2a3f45,.84));
+ const keys=plane(grp,-.2,.938,.3,.55,.21,keyboardSurface());
+ keys.rotation.x=-Math.PI/2;
  box(grp,.50,.92,.36,.12,.03,.14,dark);
  // monitor back stand and visible screen
  box(grp,0,1.15,-.25,.08,.52,.08,metal);
