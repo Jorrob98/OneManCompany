@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { clone as cloneRig } from "three/addons/utils/SkeletonUtils.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 const bridge=window.AIOStudio;
 const info={status:"loading",engine:"real-geometry-glb",frames:0,agents:[],
@@ -66,7 +67,9 @@ function mat(c,roughness=.63,metalness=.02){
  return materialCache.get(key);
 }
 const unitBox=new THREE.BoxGeometry(1,1,1);
+const roundedUnit=new RoundedBoxGeometry(1,1,1,3,.035);
 batchableGeometry.add(unitBox);
+batchableGeometry.add(roundedUnit);
 function staticPrimitive(key,factory){
  if(!geometryCache.has(key)){
    const geo=factory();geometryCache.set(key,geo);batchableGeometry.add(geo);
@@ -212,9 +215,14 @@ function keyboardSurface(){
  return keyboardMaterial;
 }
 function roundedPanel(parent,x,y,z,w,h,d,material){
- box(parent,x,y,z,w,h,d,material);
- const edgeMat=mat(0x675f5f,.6,.65);
- box(parent,x,y-h*.44,z,w,0.025,d,edgeMat,false);
+ // Reusable beveled desk/table/seat silhouette, not a sharp-edged cuboid.
+ // Geometry and material remain batchable for mobile GPU efficiency.
+ const panel=new THREE.Mesh(roundedUnit,material);
+ panel.position.set(x,y,z);panel.scale.set(w,h,d);
+ panel.castShadow=true;panel.receiveShadow=true;parent.add(panel);
+ const edgeMat=mat(0x8a8f83,.89);
+ box(parent,x,y-h*.48,z,w*.96,.018,d*.96,edgeMat,false);
+ return panel;
 }
 function wall(parent,x,y,z,w,h,d,material){
  return box(parent,x,y,z,w,h,d,material,false);
