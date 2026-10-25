@@ -295,25 +295,40 @@ function lounge(){
  plane(root,-9.2,2.25,-2.3,2.6,1.5,new THREE.MeshBasicMaterial({map:label,transparent:true,side:THREE.DoubleSide}),Math.PI/2);
  pot(-8.62,-4.9,1.15);pot(-3.9,-4.9,.85);
 }
+// Deliberately lower/laterally-offset displays: a centered 1.36×.81m
+// monitor previously hid entire heads and torsos behind the screen.
+const workstations=[],screenPanels=[];
 function desk(x,z,rot=0,size=1){
- const grp=new THREE.Group();root.add(grp);grp.position.set(x,0,z);grp.rotation.y=rot;grp.scale.setScalar(size);
+ const grp=new THREE.Group();root.add(grp);
+ grp.position.set(x,0,z);grp.rotation.y=rot;grp.scale.setScalar(size);
+ const side=Math.sin(x*2.4+z*.8)>=0?1:-1;
+ const displayX=side*.37;
+ const keyboardX=displayX*.68;
+ const workTop=0.875; // table surface
  roundedPanel(grp,0,.81,0,2.9,.13,1.5,woodPale);
- for(const s of [-1,1])for(const v of [-1,1])box(grp,s*1.2,.42,v*.52,.07,.72,.07,metal);
- // under-desk LED
- box(grp,0,.69,.45,2.6,.025,.045,neonWarm,false);
- // fabric desk pad, keyboard and mouse
- box(grp,.16,.902,.27,1.5,.025,.48,mat(0x29313f,.84));
- box(grp,-.2,.92,.3,.57,.024,.22,mat(0x2a3f45,.84));
- const keys=plane(grp,-.2,.938,.3,.55,.21,keyboardSurface());
+ for(const sx of [-1,1])for(const sz of [-1,1])
+   box(grp,sx*1.2,.42,sz*.52,.06,.72,.06,metal);
+ box(grp,0,.71,.45,2.55,.021,.04,mat(0xa3afa6,.96),false);
+ // One low-profile fabric mat, keyboard and mouse within arm's reach.
+ box(grp,keyboardX,.906,.22,1.21,.018,.45,mat(0x35484b,.98));
+ box(grp,keyboardX,.924,.24,.57,.020,.22,mat(0x28383d,.84));
+ const keys=plane(grp,keyboardX,.939,.24,.55,.21,keyboardSurface());
  keys.rotation.x=-Math.PI/2;
- box(grp,.50,.92,.36,.12,.03,.14,dark);
- // monitor back stand and visible screen
- box(grp,0,1.15,-.25,.08,.52,.08,metal);
- box(grp,0,1.56,-.26,1.36,.81,.095,mat(0x0d1726,.3,.28));
- screenSurface(grp,0,1.58,-.199,1.24,.71,x<-4?"board":x<0?"code":"chart");
- // side tablet + coffee mug
- box(grp,1.07,.91,.08,.42,.025,.35,mat(0x1c2938));
- cylinder(grp,-1.1,.98,.18,.10,.09,.18,mat(0xe6c6ae,.8),12);
+ box(grp,keyboardX+side*.44,.92,.27,.09,.026,.145,mat(0x46595b,.77));
+ // Slim 24-inch display: y = 1.38 and upper edge = 1.69,
+ // below the approximate top of a seated 1.77m human model.
+ const stem=box(grp,displayX,1.085,-.27,.055,.39,.066,metal,false);
+ stem.castShadow=false;
+ box(grp,displayX,1.385,-.265,1.12,.62,.055,mat(0x24363b,.70,.08));
+ const screen=screenSurface(grp,displayX,1.39,-.233,1.025,.545,
+   x<-4?"board":x<0?"code":"chart");
+ screenPanels.push(screen);
+ box(grp,displayX,1.076,-.13,.36,.018,.20,metal,false);
+ // Contained personal objects: a notebook and small ceramic cup.
+ box(grp,-side*1.02,.896,.13,.31,.014,.24,mat(0x9aa8a5,.97));
+ cylinder(grp,side*1.06,.966,.22,.083,.079,.17,mat(0xd9c7b3,.85),12);
+ workstations.push({x,z,side,displayX,screenCenterY:1.39,screenWidth:1.025,
+   screenHeight:.545,screenTopY:1.6625,tableY:workTop});
  return grp;
 }
 function chair(x,z,rotation=0){
@@ -322,11 +337,12 @@ function chair(x,z,rotation=0){
  cylinder(grp,0,.51,0,.042,.042,.42,chrome);
  // Fabric executive chair: backrest behind the worker, not in front of GLB.
  // Former large black backrest at z=-.32 occluded nearly the whole person.
- const chairFabric=mat(0x647775,.95),chairEdge=mat(0x46585a,.70);
+ const chairFabric=mat(0x83928b,.92),chairEdge=mat(0x52635f,.82);
  roundedPanel(grp,0,.74,0,.77,.105,.69,chairFabric);
- const back=box(grp,0,1.13,.40,.68,.70,.115,chairFabric);
- back.rotation.x=-.09;
- box(grp,0,1.13,.474,.54,.52,.025,chairEdge,false);
+ const back=box(grp,0,1.075,.405,.64,.61,.095,chairFabric);
+ back.rotation.x=-.11;
+ // Thin inset upholstery, rather than the former opaque grey block.
+ box(grp,0,1.085,.457,.49,.44,.012,chairEdge,false);
  for(const dx of [-.40,.40]){
    box(grp,dx,.96,.08,.055,.045,.53,chairEdge);
    box(grp,dx,.77,.14,.035,.35,.035,chrome);
@@ -934,6 +950,7 @@ async function boot(){
   neonWarm.emissiveIntensity=.045;neonBlue.emissiveIntensity=.08;
   neonPurple.emissiveIntensity=.04;
   createShell();deskPods();lounge();meeting();
+  info.workstations=workstations.map(w=>({...w}));
   batchFurniture();
   await preloadHumans();
   syncPeople();setMood(bridge.getMood());cameraUpdate();
