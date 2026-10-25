@@ -220,6 +220,14 @@ try {
   assert.ok(mobilePerf.pixelRatio>0&&mobilePerf.pixelRatio<=1.24,
     "Mobile GPU pixel budget not enforced: "+JSON.stringify(mobilePerf));
   console.log("Mobile real-3D renderer budget",JSON.stringify(mobilePerf));
+  await page.waitForFunction(()=>window.AIOOffice3D.teamFraming?.count===4,
+    null,{timeout:8000});
+  const teamFraming=await page.evaluate(()=>window.AIOOffice3D.teamFraming);
+  assert.ok(teamFraming.maxAbsX<=.86 && teamFraming.maxAbsY<=.85,
+    "Mobile office crops one or more employees: "+JSON.stringify(teamFraming));
+  assert.ok(teamFraming.distance<=31,
+    "Automatic mobile team framing is outside safe zoom range: "+JSON.stringify(teamFraming));
+  console.log("Mobile all-four-employee framing",JSON.stringify(teamFraming));
   const bounds=await page.evaluate(()=>({
     pageWidth:document.documentElement.scrollWidth,
     viewport:innerWidth,
