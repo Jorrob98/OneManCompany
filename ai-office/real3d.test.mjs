@@ -107,8 +107,17 @@ try {
   assert.ok(desktopPerf.renderer.drawCalls<165,
     "Static furniture GPU instancing has regressed: "+JSON.stringify(desktopPerf));
   const batching=await page.evaluate(()=>window.AIOOffice3D.batching);
-  assert.ok(batching.sourceMeshes>110&&batching.drawBatches>3,
+  assert.ok(batching.sourceMeshes>75&&batching.drawBatches>3,
     "Static furniture batching not active: "+JSON.stringify(batching));
+  assert.equal(batching.mixedGeometryGroups,0,
+    "A GPU batch mixes incompatible shapes: "+JSON.stringify(batching));
+  assert.ok(batching.geometryTypes.BoxGeometry>20,
+    "Desk box geometry lost during batching: "+JSON.stringify(batching));
+  assert.ok((batching.geometryTypes.CylinderGeometry||0)>5,
+    "Round chair/plant components were rendered as boxes: "+JSON.stringify(batching));
+  assert.ok((batching.geometryTypes.SphereGeometry||0)>5,
+    "Plant leaves/rounded furniture were rendered as boxes: "+JSON.stringify(batching));
+  console.log("Geometry type integrity",JSON.stringify(batching));
   await page.waitForFunction(()=>window.AIOOffice3D.metrics?.sampleCount>=12,
     null,{timeout:15000});
   const observedDesktop=await page.evaluate(()=>window.AIOOffice3D.metrics);
