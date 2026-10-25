@@ -320,11 +320,11 @@ function desk(x,z,rot=0,size=1){
  // One low-profile fabric mat, keyboard and mouse within arm's reach.
  // Move input devices toward the seated employee, not under the monitor
  // at the back of a 1.5m-deep desk (previously unreachable).
- box(grp,keyboardX,.906,.56,1.21,.018,.43,mat(0x35484b,.98));
- box(grp,keyboardX,.924,.63,.57,.020,.22,mat(0x28383d,.84));
- const keys=plane(grp,keyboardX,.939,.63,.55,.21,keyboardSurface());
+ box(grp,keyboardX,.906,.59,1.21,.018,.43,mat(0x35484b,.98));
+ box(grp,keyboardX,.924,.66,.57,.020,.22,mat(0x28383d,.84));
+ const keys=plane(grp,keyboardX,.939,.66,.55,.21,keyboardSurface());
  keys.rotation.x=-Math.PI/2;
- box(grp,keyboardX+side*.44,.92,.65,.09,.026,.145,mat(0x46595b,.77));
+ box(grp,keyboardX+side*.44,.92,.68,.09,.026,.145,mat(0x46595b,.77));
  // Slim 24-inch display: y = 1.38 and upper edge = 1.69,
  // below the approximate top of a seated 1.77m human model.
  const stem=box(grp,displayX,1.085,-.27,.055,.39,.066,metal,false);
@@ -342,7 +342,7 @@ function desk(x,z,rot=0,size=1){
  keyboardAnchors.push({grp,x,z,keyboardX,size});
  workstations.push({x,z,side,displayX,screenCenterY:1.39,screenWidth:1.025,
    screenHeight:.545,screenTopY:1.6625,tableY:workTop,
-   keyboardZ:z+size*.63,chairZ:z+.99,keyboardDistance:.99-size*.63});
+   keyboardZ:z+size*.66,chairZ:z+.93,keyboardDistance:.93-size*.66});
  return grp;
 }
 function chair(x,z,rotation=0){
@@ -373,7 +373,7 @@ function deskPods(){
  carpet(-3.0,3.25,10.9,5.4,0x71827e);
  const locations=[[-6.3,2.15,0],[-2.95,2.15,0],[.55,2.15,0],[-5.05,5.05,0],[-1.40,5.05,0],[2.15,5.05,0]];
  for(const [x,z,rot] of locations){
-   desk(x,z,rot,.9);chair(x,z+.99);
+   desk(x,z,rot,.9);chair(x,z+.93);
  }
  // workstation dividers, storage, tray, pot
  for(const x of [-4.8,-1.5,1.82]){
@@ -438,13 +438,13 @@ function partitionsAndLighting(){
  for(let i=0;i<4;i++)pot(-8.2+i*.38,6.2,.62+(i%2)*.17);
 }
 // Seats, GLB rigs and office all inhabit the SAME metric 3D space.
-const seats=[[-6.3,3.14],[-2.95,3.14],[.55,3.14],[2.15,6.04]];
+const seats=[[-6.3,3.08],[-2.95,3.08],[.55,3.08],[2.15,5.98]];
 const ikTarget=new THREE.Vector3(),ikP0=new THREE.Vector3(),ikP1=new THREE.Vector3();
 const ikP2=new THREE.Vector3(),ikDir=new THREE.Vector3(),ikPole=new THREE.Vector3();
 function closestKeyboard(actor){
  const x=actor.slot.x,z=actor.slot.z;
  return keyboardAnchors.reduce((best,w)=>{
-   const distance=Math.hypot(x-w.x,z-(w.z+1.1));
+   const distance=Math.hypot(x-w.x,z-(w.z+.93));
    return !best||distance<best.distance?{anchor:w,distance}:best;
  },null)?.anchor||null;
 }
@@ -452,7 +452,8 @@ function keyboardWorldTarget(anchor,side,phase){
  // Two different key rows so the wrists don't overlap in a single location.
  const x=anchor.keyboardX+side*.17;
  const y=.947+Math.sin(phase)*.008;
- const z=.63+(side>0?.012:-.012);
+ // The front key row on the real .21 m keyboard is nearer the worker.
+ const z=.716+(side>0?.008:-.008);
  return anchor.grp.localToWorld(new THREE.Vector3(x,y,z));
 }
 function rigWorldPosition(bone,dest){
@@ -482,7 +483,7 @@ function guideHandToKeyboard(chain,target,weight){
  pole.normalize();
  const elbow=reach.clone().multiplyScalar(along).addScaledVector(pole,offset).add(S);
  const desiredHand=S.clone().addScaledVector(reach,span);
- const intensity=THREE.MathUtils.clamp(weight,0,.73);
+ const intensity=THREE.MathUtils.clamp(weight,0,.78);
  aimBone(upper,forearm,elbow.sub(S),intensity);
  aimBone(forearm,hand,desiredHand.sub(forearm.getWorldPosition(new THREE.Vector3())),intensity);
  const after=hand.getWorldPosition(new THREE.Vector3()).distanceTo(target);
@@ -978,7 +979,7 @@ function animate(t){
          const chain=order[i];
          chain.side=i===0?-1:1;
          const goal=keyboardWorldTarget(anchor,chain.side,t*.006+a.index);
-         const result=guideHandToKeyboard(chain,goal,a.workGesture*1.7);
+         const result=guideHandToKeyboard(chain,goal,a.workGesture*2.0);
          if(result){
            totalBefore+=result.before;totalAfter+=result.after;
            totalGap+=result.reachGap;
