@@ -550,15 +550,26 @@ function batchFurniture(){
   const buckets=new Map();
   root.traverse(o=>{
     if(!o.isMesh || !batchableGeometry.has(o.geometry) || o.material.transparent)return;
-    const k=o.material.uuid+":"+String(o.castShadow)+":"+String(o.receiveShadow);
+    // Geometry MUST be identical across a batch. Grouping only by material
+    // converted cylinders, chair wheels and plant spheres into unit boxes.
+    const k=o.geometry.uuid+":"+o.material.uuid+":"+
+      String(o.castShadow)+":"+String(o.receiveShadow);
     if(!buckets.has(k))buckets.set(k,[]);
     buckets.get(k).push(o);
   });
   let objects=0,batches=0;
+  const meshTypes={};
+  let mixedGeometryGroups=0;
   for(const bucket of buckets.values()){
     if(bucket.length<2)continue;
     const first=bucket[0];
-    const merged=new THREE.InstancedMesh(unitBox,first.material,bucket.length);
+    if(bucket.some(mesh=>mesh.geometry!==first.geometry)){
+      mixedGeometryGroups++;
+      throw new Error("GPU instance batch contains incompatible primitive geometry");
+    }
+    const kind=first.geometry.type;
+    meshTypes[kind]=(meshTypes[kind]||0)+bucket.length;
+    const merged=new THREE.InstancedMesh(first.geometry,first.material,bucket.length);
     merged.instanceMatrix.setUsage(THREE.StaticDrawUsage);
     merged.castShadow=first.castShadow;
     merged.receiveShadow=first.receiveShadow;
@@ -573,7 +584,8 @@ function batchFurniture(){
     objects+=bucket.length;
   }
   info.batching={sourceMeshes:objects,drawBatches:batches,
-    cachedGeometries:geometryCache.size,sharedMaterials:materialCache.size};
+    cachedGeometries:geometryCache.size,sharedMaterials:materialCache.size,
+    geometryTypes:meshTypes,mixedGeometryGroups};
 }
 function selectAgent(id){
  bridge.select(id);syncPeople();
