@@ -264,6 +264,17 @@ Screenshot ricevuto: quattro agenti GLB etichettati "Seduto" ma ancora in piedi 
 - **Preview pubblicata e verificata:** `AI Office Cloudflare Deploy` run `40243059049` **PASS**, commit pubblico `86ad2cb26eaf274266ecebf984caceefc62653f5`, URL https://ai-office-api.jorrob98.workers.dev/ e verifica `/preview-version.json`. Stesso Worker esistente. Worker status `ready=true` non certifica comunque la generazione AI autorizzata end-to-end.
 - **Problemi ancora aperti:** clipping dita, assenza di finger IK e vera interazione con tastiera, locomozione/navmesh, FPS su hardware iPhone, AI live e sincronizzazione dei dati. NON dichiarare progetto finito.
 
+### 26/10/2026 — mani guidate verso le tastiere, ergonomia e CI (pubblicato)
+
+- **Motore 3D esistente:** `ai-office/office-real3d.mjs`; nessun nuovo progetto/Worker. Il sistema `guideHandToKeyboard` guida braccia e polsi del GLB verso coordinate reali delle due zone di battitura della tastiera. Rimane un blend prudente: non è ancora simulazione fisica completa delle dita, né garantisce contatto senza distanza con ogni tasto.
+- **Regressione identificata e risolta:** dopo un cambio da desktop a formato smartphone la camera transitava lentamente tagliando una testa. Il preset responsive ora si applica immediatamente quando cambia il formato; la navigazione ordinaria conserva l'interpolazione morbida.
+- **Ergonomia ulteriormente migliorata:** tastiera spostata verso il bordo accessibile, sedia e punto di seduta avvicinati in modo coordinato; target del polso sul bordo utile della tastiera. Distanza fisica fra centro tastiera e centro sedia testata `0.336` unità. Altezza del bacino sempre ~`0.79` come la seduta, evitando il vecchio bug dei giganti/fluttuazione.
+- **Misura reale su Chrome CI**: distanza media polso/tastiera dopo IK per i 4 agenti **0.173, 0.082, 0.094, 0.123** (unità scena), rispetto al baseline immediatamente precedente **0.226, 0.171, 0.254, 0.256**. Miglioramento misurato delle articolazioni, ma `reachableArms=0` nella telemetria: nessuna rivendicazione di mani sempre effettivamente sui tasti. `meanReachGap` pari a `0.074/0.039/0.056/0.029`.
+- **Test di regressione completi:** GitHub Actions `AI Office Studio UI` run `40243708923` e `40243713317` entrambe **PASS**; `Cloudflare Deploy` run `40243708902` **PASS**, inclusi posizione/seduta GLB, rig/IK, distanza ergonomica, percorso desk/meeting/desk, roster, camera responsive e anti-flash vecchia scena.
+- **Preview pubblica controllata dal deploy:** https://ai-office-api.jorrob98.workers.dev/ — SHA live esatto **`fb8cf62c4cf3ce04e9652ac2acfd6b45f6f24eee`** verificato da `/preview-version.json`.
+- **Screenshot QA ispezionati:** artefatto GitHub Actions `12617753008` (`office-real3d-scene.png`, `office-real3d-mobile.png`). Gli agenti ora risultano visivamente seduti davanti a tastiere raggiungibili in parte; la scena panoramica resta troppo distante/piccola, avatar poco espressivi e stanza schematica. FPS fisici su iPhone non verificati; CI SwiftShader era molto lento.
+- **Aperto:** dita/finger IK, eventuale contatto mani senza clipping, posture/locomozione realistiche, vera navmesh, realismo grafico, test hardware reale, Worker AI autenticato end-to-end, sync e backup. **Non** dichiarare 100%.
+
 ## Prossimi sprint (non ancora completati)
 
 - [x] 02 — Ambiente premium: prospettiva, ombre, occlusioni, riflessi, giorno/notte, schermi, spazi
