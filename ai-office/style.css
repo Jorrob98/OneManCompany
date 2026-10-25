@@ -623,3 +623,20 @@ main:has(.page[data-view="office"].active){padding-top:19px}
  main:has(.page[data-view="office"].active){padding-top:10px}
  .page[data-view="office"].active{gap:14px}
 }
+
+/* Cinematic scene controls must not cover avatars or the foreground desks. */
+:root.aio-boot-3d .scene-wrap .room-hint{
+  left:13px;right:auto;bottom:13px;width:max-content;max-width:175px;
+  padding:7px 11px;border-radius:999px;
+  font-size:10px;line-height:1.3;letter-spacing:.02em;
+  opacity:.90;transition:opacity .3s ease,transform .3s ease;
+}
+:root.aio-boot-3d .scene-wrap .room-hint.aio-hint-dismissed{
+  opacity:0;transform:translateY(6px);pointer-events:none;
+}
+@media(max-width:750px){
+  :root.aio-boot-3d .scene-wrap .room-hint{
+    left:11px;right:auto;bottom:11px;
+    padding:6px 10px;max-width:150px;font-size:10px;
+  }
+}
