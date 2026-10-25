@@ -320,11 +320,11 @@ function desk(x,z,rot=0,size=1){
  // One low-profile fabric mat, keyboard and mouse within arm's reach.
  // Move input devices toward the seated employee, not under the monitor
  // at the back of a 1.5m-deep desk (previously unreachable).
- box(grp,keyboardX,.906,.46,1.21,.018,.43,mat(0x35484b,.98));
- box(grp,keyboardX,.924,.52,.57,.020,.22,mat(0x28383d,.84));
- const keys=plane(grp,keyboardX,.939,.52,.55,.21,keyboardSurface());
+ box(grp,keyboardX,.906,.56,1.21,.018,.43,mat(0x35484b,.98));
+ box(grp,keyboardX,.924,.63,.57,.020,.22,mat(0x28383d,.84));
+ const keys=plane(grp,keyboardX,.939,.63,.55,.21,keyboardSurface());
  keys.rotation.x=-Math.PI/2;
- box(grp,keyboardX+side*.44,.92,.53,.09,.026,.145,mat(0x46595b,.77));
+ box(grp,keyboardX+side*.44,.92,.65,.09,.026,.145,mat(0x46595b,.77));
  // Slim 24-inch display: y = 1.38 and upper edge = 1.69,
  // below the approximate top of a seated 1.77m human model.
  const stem=box(grp,displayX,1.085,-.27,.055,.39,.066,metal,false);
@@ -342,7 +342,7 @@ function desk(x,z,rot=0,size=1){
  keyboardAnchors.push({grp,x,z,keyboardX,size});
  workstations.push({x,z,side,displayX,screenCenterY:1.39,screenWidth:1.025,
    screenHeight:.545,screenTopY:1.6625,tableY:workTop,
-   keyboardZ:z+size*.52,chairZ:z+1.10,keyboardDistance:1.10-size*.52});
+   keyboardZ:z+size*.63,chairZ:z+.99,keyboardDistance:.99-size*.63});
  return grp;
 }
 function chair(x,z,rotation=0){
@@ -373,7 +373,7 @@ function deskPods(){
  carpet(-3.0,3.25,10.9,5.4,0x71827e);
  const locations=[[-6.3,2.15,0],[-2.95,2.15,0],[.55,2.15,0],[-5.05,5.05,0],[-1.40,5.05,0],[2.15,5.05,0]];
  for(const [x,z,rot] of locations){
-   desk(x,z,rot,.9);chair(x,z+1.10);
+   desk(x,z,rot,.9);chair(x,z+.99);
  }
  // workstation dividers, storage, tray, pot
  for(const x of [-4.8,-1.5,1.82]){
@@ -438,7 +438,7 @@ function partitionsAndLighting(){
  for(let i=0;i<4;i++)pot(-8.2+i*.38,6.2,.62+(i%2)*.17);
 }
 // Seats, GLB rigs and office all inhabit the SAME metric 3D space.
-const seats=[[-6.3,3.25],[-2.95,3.25],[.55,3.25],[2.15,6.15]];
+const seats=[[-6.3,3.14],[-2.95,3.14],[.55,3.14],[2.15,6.04]];
 const ikTarget=new THREE.Vector3(),ikP0=new THREE.Vector3(),ikP1=new THREE.Vector3();
 const ikP2=new THREE.Vector3(),ikDir=new THREE.Vector3(),ikPole=new THREE.Vector3();
 function closestKeyboard(actor){
@@ -452,7 +452,7 @@ function keyboardWorldTarget(anchor,side,phase){
  // Two different key rows so the wrists don't overlap in a single location.
  const x=anchor.keyboardX+side*.17;
  const y=.947+Math.sin(phase)*.008;
- const z=.52+(side>0?.012:-.012);
+ const z=.63+(side>0?.012:-.012);
  return anchor.grp.localToWorld(new THREE.Vector3(x,y,z));
 }
 function rigWorldPosition(bone,dest){
@@ -486,7 +486,8 @@ function guideHandToKeyboard(chain,target,weight){
  aimBone(upper,forearm,elbow.sub(S),intensity);
  aimBone(forearm,hand,desiredHand.sub(forearm.getWorldPosition(new THREE.Vector3())),intensity);
  const after=hand.getWorldPosition(new THREE.Vector3()).distanceTo(target);
- return {before,after,reachable:requested<=first+second,armLength:first+second};
+ return {before,after,reachable:requested<=first+second,
+   reachGap:Math.max(0,requested-first-second),armLength:first+second};
 }
 
 function aimBone(bone,child,direction,weight){
@@ -972,7 +973,7 @@ function animate(t){
        const order=a.armChains.slice().sort((u,v)=>
          u.upper.getWorldPosition(new THREE.Vector3()).x-
          v.upper.getWorldPosition(new THREE.Vector3()).x);
-       let totalBefore=0,totalAfter=0,reachable=0,success=0;
+       let totalBefore=0,totalAfter=0,totalGap=0,reachable=0,success=0;
        for(let i=0;i<order.length;i++){
          const chain=order[i];
          chain.side=i===0?-1:1;
@@ -980,6 +981,7 @@ function animate(t){
          const result=guideHandToKeyboard(chain,goal,a.workGesture*1.7);
          if(result){
            totalBefore+=result.before;totalAfter+=result.after;
+           totalGap+=result.reachGap;
            reachable+=Number(result.reachable);success++;
          }
        }
@@ -988,6 +990,7 @@ function animate(t){
          a.keyboardStatus.meanHandDistance=Number((totalAfter/success).toFixed(3));
          a.keyboardStatus.meanUnposedDistance=Number((totalBefore/success).toFixed(3));
          a.keyboardStatus.reachableArms=reachable;
+         a.keyboardStatus.meanReachGap=Number((totalGap/success).toFixed(3));
          a.keyboardStatus.frames++;
        }
      }
