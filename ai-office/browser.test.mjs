@@ -1,0 +1,372 @@
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import assert from "node:assert/strict";
+import { chromium } from "playwright-core";
+
+const port=4173;
+const server=spawn("python3",["-m","http.server",String(port),"--directory",resolve("ai-office")],{stdio:"ignore"});
+let browser;
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+try {
+  let ready=false;
+  for(let i=0;i<35;i++){
+    try{const res=await fetch("http://127.0.0.1:"+port);if(res.ok){ready=true;break;}}catch{}
+    await delay(250);
+  }
+  assert.ok(ready,"Local static server did not start");
+  browser=await chromium.launch({channel:"chrome",headless:true,args:["--no-sandbox","--use-gl=angle","--use-angle=swiftshader-webgl","--enable-unsafe-swiftshader"]});
+  const page=await browser.newPage({viewport:{width:1400,height:900}});
+  // Fake backend only in the automated browser test, never in the live app.
+  // Actual Cloudflare model calls are separately verified by Worker unit tests.
+  await page.route("https://ai-office-api.jorrob98.workers.dev/api/ai/**",async route=>{
+    const req=route.request();
+    const headers={"content-type":"application/json","access-control-allow-origin":"http://127.0.0.1:4173",
+      "access-control-allow-headers":"authorization, content-type","access-control-allow-methods":"GET, POST, OPTIONS"};
+    if(req.method()==="OPTIONS"){await route.fulfill({status:204,headers});return;}
+    if(req.url().endsWith("/status")){await route.fulfill({status:200,headers,body:JSON.stringify({
+      ok:true,ready:true,engine:"cloudflare-workers-ai",onemancompany_runtime:"not-connected"
+    })});return;}
+    if(req.url().endsWith("/generate")){
+      if(req.headers().authorization!=="Bearer sprint_06_example_operator_key_123456"){
+        await route.fulfill({status:401,headers,body:JSON.stringify({ok:false,error:"unauthorized"})});return;
+      }
+      const body=req.postDataJSON();
+      await route.fulfill({status:200,headers,body:JSON.stringify({
+        ok:true,kind:"text-draft",output:"Bozza AI di prova: "+body.title,
+        model:"@cf/meta/llama-3.1-8b-instruct-fp8",
+        producedAt:"2026-10-22T10:00:00Z",
+        requestId:"11111111-2222-4333-8444-555555555555",
+        requiresReview:true
+      })});return;
+    }
+    await route.fulfill({status:404,headers,body:"{}"});
+  });
+  const errors=[];
+  page.on("pageerror",e=>errors.push(String(e)));
+  await page.goto("http://127.0.0.1:"+port+"/?legacy=1",{waitUntil:"domcontentloaded"});
+  await page.locator("#statEmployees").waitFor();
+  assert.equal(await page.locator("#statEmployees").innerText(),"04");
+  // This project must render actual WebGL geometry, not a static image.
+  await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
+  assert.equal(await page.locator(".penthouse-artwork").count(), 1, "Premium scene artwork missing");
+  const background=await page.locator(".penthouse-artwork").getAttribute("src");
+  assert.equal(background,"./assets/penthouse-living-v3.webp",
+    "Old background with duplicate static people is still in use");
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-background"),"living-v3");
+
+  assert.equal(await page.locator(".agent-hotspot").count(),4);
+  // Accept only actual GLB model/animation readiness, not a decorative screenshot.
+  await page.waitForFunction(
+    () => ["ready","fallback-load-error","fallback-no-webgl"].includes(window.AIOAgents3D?.status),
+    null,{timeout:45000});
+  const agentState=await page.evaluate(()=>({
+    status:window.AIOAgents3D?.status,
+    agents:window.AIOAgents3D?.agents||[],
+    error:window.AIOAgents3D?.error||""
+  }));
+  assert.equal(agentState.status,"ready",JSON.stringify(agentState));
+  assert.equal(agentState.agents.length,4);
+  const initialSlots=await page.evaluate(()=>window.AIOAgents3D.snapshot().map(a=>a.slot));
+  assert.deepEqual(initialSlots,[0,1,2,3],"Workstations were not assigned uniquely");
+  const route=await page.evaluate(()=>window.AIOAgents3D.snapshot()[0].routeNodes);
+  assert.ok(route.length>=2,"Office navigation is not using corridors");
+  assert.ok(route.some(n=>n==="deskDoor0"||n==="westAisle"),
+    "Worker is walking through the furniture rather than using the aisle");
+
+  const uniqueModels=await page.evaluate(()=>window.AIOAgents3D.snapshot().map(a=>a.modelStyle));
+  assert.deepEqual(uniqueModels,["f1","m1","f2","m2"],"Employees are still duplicated 3D characters");
+  assert.equal((await page.evaluate(()=>window.AIOAgents3D.modelVariants)).length,8);
+
+  const clips=await page.evaluate(()=>window.AIOAgents3D.activeClips);
+  assert.ok(clips.includes("idle")&&clips.includes("walk"),"Main GLB movement clips missing");
+  assert.ok(clips.some(c=>c==="think"||c==="look"),"Natural office gestures missing");
+
+  const firstPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
+  await page.waitForTimeout(1100);
+  const nextPosition = await page.locator('.office-agent-select').first().evaluate(el=>el.style.top);
+  assert.notEqual(firstPosition,nextPosition,"Rigged avatar is not moving between office waypoints");
+
+  assert.equal(await page.locator(".office-agent-canvas").count(),1);
+  assert.equal(await page.locator(".office-agent-select").count(),4);
+
+  // Sprint 02: verify real environment layers, responsive monitor effects,
+  // depth-corrected 3D workers, four scene lighting modes and room navigation.
+  await page.waitForFunction(()=>window.AIOEnvironment?.getStatus?.().monitors===4,null,{timeout:15000});
+  assert.equal(await page.locator(".aio-furniture-cutout").count(),2);
+  assert.equal(await page.locator("#penthouseMarkers").evaluate(el=>getComputedStyle(el).opacity),
+    "0","Duplicate 2D employee + markers still visible");
+
+  assert.equal(await page.locator(".aio-monitor-ui").count(),4);
+  assert.equal(await page.locator(".aio-zone-bar button").count(),3);
+
+  const firstWorker=await page.evaluate(()=>window.AIOAgents3D.snapshot()[0]);
+  assert.ok(firstWorker.depthScale>=.93&&firstWorker.depthScale<=1.06,"Perspective scaling did not initialize");
+  assert.ok(firstWorker.shadowOpacity>.25,"Contact shadow is not visible");
+  const moodButton=page.locator("#roomMood");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere"),"day");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere"),"night");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere-setting"),"auto");
+  await moodButton.click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-atmosphere"),"evening");
+  await page.locator('[data-office-zone="meeting"]').click();
+  assert.equal(await page.locator('[data-office-zone="meeting"]').getAttribute("aria-pressed"),"true");
+  assert.equal(await page.locator("#aioZoneCaption").innerText(),"Sala riunioni");
+  await page.locator('[data-office-zone="meeting"]').click();
+  assert.equal(await page.locator('[data-office-zone="meeting"]').getAttribute("aria-pressed"),"false");
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-camera-mode"),"close");
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-camera-mode"),"focus");
+  await page.locator("#roomZoom").click();
+  assert.equal(await page.locator("#penthouseStage").getAttribute("data-camera-mode"),"overview");
+
+  // A real UI click must direct the selected human agent to a visible work zone.
+  await page.locator('[data-action="agent-meeting"][data-id="a1"]').click();
+  assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.goal),"meeting");
+  await page.waitForFunction(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.point === "meeting",null,{timeout:13000});
+  assert.match(await page.locator('.office-agent-select[data-agent-id="a1"]').innerText(),/Parla con colleghi/);
+  await page.locator('[data-action="agent-desk"][data-id="a1"]').click();
+  assert.equal(await page.evaluate(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.goal),"desk");
+  await page.waitForFunction(() => window.AIOAgents3D.snapshot()
+    .find(a => a.id === "a1")?.point === "desk",null,{timeout:15000});
+  const worker=await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .find(a=>a.id==="a1"));
+  assert.equal(worker.activity,"Al computer","Employee is not at a real work location");
+  assert.equal(worker.routeSegments,0,"Employee still has unfinished path segments");
+  await page.waitForTimeout(2200);
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .find(a=>a.id==="a1")?.goal),"desk","Employee wandered away immediately instead of working");
+  // No fake seated state: the current 2.5D artwork has no aligned 3D
+  // workstation geometry. Real sitting remains blocked until visual QA passes.
+  const workerPose=await page.evaluate(()=>window.AIOAgents3D.snapshot()
+    .find(a=>a.id==="a1"));
+  assert.equal(workerPose.posture,"standing","Do not fake a seated pose on photographic furniture");
+  assert.ok(workerPose.sittingBlend<.08,"Unverified seat pose reactivated");
+  assert.equal(workerPose.chairVisible,false,"Giant grey proxy chairs must not cover the office");
+  assert.ok(workerPose.location.y>=69,"Standing agent is hovering above the office floor");
+  assert.equal(workerPose.clipEnabled,false,"The human GLB must remain fully visible");
+  const deskLabel=await page.locator('.office-agent-select[data-agent-id="a1"]').innerText();
+  assert.match(deskLabel,/Alla postazione/);
+  assert.doesNotMatch(deskLabel,/Seduto|digita al PC/i);
+  await page.screenshot({path:"ai-office/office-seated-desktop.png"});
+  await page.locator("#penthouseStage").screenshot({path:"ai-office/office-seated-scene.png"});
+  // A worker in the standing-at-desk fallback can leave without a fake rise.
+  await page.locator('[data-action="agent-lounge"][data-id="a1"]').click();
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sittingBlend<.12,
+    null,{timeout:8000});
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.goal),"lounge");
+  const loungeRoute=await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.routeNodes);
+  assert.equal(loungeRoute.at(-1),"lounge0");
+  assert.ok(loungeRoute.includes("loungeAisle"),"Employee is bypassing the lounge entrance");
+  // Vacation sends an employee towards the exit; recall interrupts the exit
+  // without changing the desk reservations of the other three employees.
+  await page.evaluate(()=>window.AIOStudio.select("a4"));
+  await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a4")?.goal==="entry");
+  assert.deepEqual(await page.evaluate(()=>window.AIOAgents3D.snapshot().filter(a=>a.id!=="a4").map(a=>a.slot)),[0,1,2]);
+  await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a4")?.goal==="desk",null,{timeout:8000});
+  await page.evaluate(()=>window.AIOStudio.select("a1"));
+
+
+
+
+
+
+  await page.screenshot({path:"ai-office/office-premium-desktop.png"});
+
+
+  // Per-employee GLB personalization: choose another actual face/hair/outfit.
+  await page.locator('[data-action="appearance"][data-id="a1"]').click();
+  assert.equal(await page.locator("#appearanceCharacter option").count(),8);
+  await page.locator("#appearanceCharacter").selectOption("f3");
+  await page.locator("#appearanceColor").selectOption("gold");
+  await page.locator('#appearanceForm button[type="submit"]').click();
+  await page.waitForFunction(()=>{
+    const n=window.AIOAgents3D.snapshot().find(a=>a.id==="a1");
+    return n?.modelStyle==="f3" && n.color==="gold";
+  },null,{timeout:25000});
+  assert.equal(await page.locator('.office-agent-select[data-agent-id="a1"]').getAttribute("data-color"),"gold");
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready" &&
+    window.AIOAgents3D.snapshot().some(a=>a.id==="a1" && a.modelStyle==="f3"),null,{timeout:45000});
+  assert.equal(await page.locator('[data-action="appearance"][data-id="a1"]').count(),1);
+
+  // Personnel interaction and durable local browser storage.
+  await page.locator('[data-action="hire"]').first().click();
+  await page.locator("#employeeName").fill("Sofia");
+  await page.locator("#employeeRole").selectOption("Designer");
+  await page.locator('#hireForm button[type="submit"]').click();
+  assert.equal(await page.locator("#statEmployees").innerText(),"05");
+  assert.ok(await page.locator("#teamMiniList").innerText().then(s=>s.includes("Sofia")));
+  // Sprint 04: editable personnel records, progression, scheduled leave and filters.
+  const sofiaId=await page.evaluate(()=>window.AIOStudio.getAgents().find(a=>a.name==="Sofia")?.id);
+  assert.ok(sofiaId);
+  await page.locator('[data-page="people"]').click();
+  await page.locator("#peopleSearch").fill("Sofia");
+  assert.equal(await page.locator("#peopleGrid .person-card").count(),1);
+  await page.locator("#peopleDepartment").selectOption("Design");
+  assert.equal(await page.locator("#peopleGrid .person-card").count(),1);
+  await page.locator("#peopleDepartment").selectOption("Marketing");
+  assert.equal(await page.locator("#peopleGrid .person-card").count(),0);
+  await page.locator("#peopleDepartment").selectOption("all");
+  await page.locator('#peopleGrid [data-action="edit-personnel"][data-id="'+sofiaId+'"]').click();
+  await page.locator("#personnelDepartment").selectOption("Analisi");
+  await page.locator("#personnelRole").selectOption("Analista");
+  await page.locator("#personnelLevel").selectOption("Senior");
+  await page.locator('input[name="skills"][value="Design UI"]').uncheck();
+  await page.locator('input[name="skills"][value="Dati"]').check();
+  await page.locator('input[name="skills"][value="Ricerca"]').check();
+  await page.locator('#personnelForm button[type="submit"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).department,sofiaId),"Analisi");
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).skills.includes("Dati"),sofiaId),true);
+  await page.locator('#peopleGrid [data-action="promote"][data-id="'+sofiaId+'"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).level,sofiaId),"Lead");
+  const dates=await page.evaluate(()=>{
+    const fmt=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+    const d=new Date();d.setDate(d.getDate()+1);const start=fmt(d);d.setDate(d.getDate()+1);
+    return {start,end:fmt(d)};
+  });
+  await page.locator('#peopleGrid [data-action="plan-leave"][data-id="'+sofiaId+'"]').click();
+  await page.locator("#leaveStart").fill(dates.start);
+  await page.locator("#leaveEnd").fill(dates.end);
+  await page.locator('#leaveForm button[type="submit"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getAgents().find(a=>a.id===id).status,sofiaId),"available");
+  await page.locator("#peopleSearch").fill("");
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.deepEqual(await page.evaluate(id=>{
+    const a=window.AIOStudio.getAgents().find(a=>a.id===id);
+    return {level:a.level,department:a.department,skills:a.skills,leaveStart:a.leaveStart};
+  },sofiaId),{level:"Lead",department:"Analisi",skills:["Ricerca","Dati"],leaveStart:dates.start});
+  await page.locator('[data-page="office"]').click();
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.equal(await page.locator("#statEmployees").innerText(),"05");
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready" &&
+    window.AIOAgents3D.snapshot().length===4,null,{timeout:45000});
+  // A fifth hire waits for a station. When another worker goes on leave
+  // and physically exits, the waiting hire comes in without more clicks.
+  await page.evaluate(()=>window.AIOStudio.select("a4"));
+  await page.locator('[data-action="vacation"][data-id="a4"]').first().click();
+  await page.waitForFunction(()=>{
+    const sofia=window.AIOStudio.getAgents().find(a=>a.name==="Sofia");
+    return sofia && window.AIOAgents3D.snapshot().some(a=>a.id===sofia.id && a.slot===3);
+  },null,{timeout:22000});
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().length),4);
+
+  // Queue operations are explicit pending drafts, never faked AI work.
+  await page.locator('[data-page="tasks"]').click();
+  await page.locator('[data-view="tasks"] .head-button[data-action="new-task"]').click();
+  await page.locator("#taskTitle").fill("Prepara il report vendite");
+  await page.locator("#taskDetail").fill("Analizza i dati del mese quando sarà disponibile un motore AI.");
+  await page.locator('#taskForm button[type="submit"]').click();
+  assert.equal(await page.locator("#statTasks").innerText(),"01");
+  assert.ok((await page.locator("#taskList").innerText()).includes("IN ATTESA"));
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.equal(await page.locator("#statTasks").innerText(),"01");
+
+  // Sprint 05 — director-led meeting and verifiable interactions.
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
+  await page.locator('[data-page="collab"]').click();
+  assert.equal(await page.locator('[data-view="collab"].active').count(),1);
+  await page.locator('[data-collab-action="new-meeting"]').click();
+  await page.locator("#meetingTitle").fill("Revisione UX");
+  await page.locator("#meetingAgenda").fill("Condividere proposte di miglioramento");
+  await page.locator('#meetingForm button[type="submit"]').click();
+  assert.equal(await page.locator('[data-meeting-id]').count(),1);
+  const meetingId=await page.locator('[data-meeting-id]').first().getAttribute("data-meeting-id");
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="start-meeting"]').click();
+  assert.equal(await page.locator("#collabMeetingsCount").innerText(),"1");
+  await page.waitForFunction(()=>window.AIOAgents3D.snapshot().filter(a=>
+    ["a1","a2","a3"].includes(a.id)).every(a=>a.goal==="meeting"&&a.sessionMeeting),
+    null,{timeout:10000});
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="speaker"][data-agent="a1"]').click();
+  assert.equal(await page.evaluate(()=>window.AIOAgents3D.snapshot().find(a=>a.id==="a1")?.sessionSpeaker),true);
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="decision"]').click();
+  await page.locator("#decisionText").fill("Confermata revisione delle etichette mobile");
+  await page.locator('#meetingDecisionForm button[type="submit"]').click();
+  assert.match(await page.locator('[data-meeting-id="'+meetingId+'"]').innerText(),/Confermata revisione delle etichette mobile/);
+  await page.locator('[data-meeting-id="'+meetingId+'"] [data-collab-action="end-meeting"]').click();
+  assert.equal(await page.locator("#collabMeetingsCount").innerText(),"0");
+
+  // Create a pending draft assigned to Nora, then manually approve and transfer it to Leo.
+  await page.locator('[data-page="tasks"]').click();
+  await page.locator('[data-view="tasks"] .head-button[data-action="new-task"]').click();
+  await page.locator("#taskTitle").fill("Bozza design condivisa");
+  await page.locator("#taskAgent").selectOption("a1");
+  await page.locator('#taskForm button[type="submit"]').click();
+  const sharedTask=await page.evaluate(()=>window.AIOStudio.getTasks().find(t=>t.title==="Bozza design condivisa"));
+  assert.equal(sharedTask.agent,"a1");
+  await page.locator('[data-page="collab"]').click();
+  await page.locator('[data-collab-action="new-request"]').click();
+  await page.locator("#collabFrom").selectOption("a1");
+  await page.locator("#collabTo").selectOption("a2");
+  await page.locator("#collabTopic").fill("Passaggio bozza per revisione");
+  await page.locator("#collabTask").selectOption(sharedTask.id);
+  await page.locator('#collabRequestForm button[type="submit"]').click();
+  const requestId=await page.locator("[data-request-id]").first().getAttribute("data-request-id");
+  await page.locator('[data-request-id="'+requestId+'"] [data-collab-action="approve-request"]').click();
+  await page.locator('[data-request-id="'+requestId+'"] [data-collab-action="handoff"]').click();
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getTasks().find(t=>t.id===id)?.agent,sharedTask.id),"a2");
+  assert.match(await page.locator('[data-request-id="'+requestId+'"]').innerText(),/BOZZA RIASSEGNATA/);
+  assert.ok((await page.locator("#collabLedger").innerText()).includes("Passaggio confermato"));
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.equal(await page.locator('[data-meeting-id="'+meetingId+'"]').count(),1);
+  assert.equal(await page.locator('[data-request-id="'+requestId+'"]').count(),1);
+  assert.equal(await page.evaluate(id=>window.AIOStudio.getTasks().find(t=>t.id===id)?.agent,sharedTask.id),"a2");
+
+  // Sprint 06 — worker-ready UI does not generate anything until an operator authorizes.
+  await page.locator('[data-page="tasks"]').click();
+  await page.waitForFunction(()=>window.AIOEngine?.getStatus?.().ready===true,null,{timeout:12000});
+  assert.equal(await page.locator('[data-ai-action="generate"]').first().isDisabled(),true);
+  await page.locator("#aiEngineKey").fill("sprint_06_example_operator_key_123456");
+  await page.locator('[data-ai-action="unlock"]').click();
+  assert.equal(await page.locator("#aiEngineKey").inputValue(),"","Operator key must clear from the input");
+  const encryptedStorage=await page.evaluate(()=>JSON.stringify(localStorage));
+  assert.ok(!encryptedStorage.includes("sprint_06_example_operator_key_123456"),"Never persist the operator key");
+  await page.locator('[data-ai-action="generate"][data-id="'+sharedTask.id+'"]').click();
+  await page.waitForFunction(id=>Boolean(window.AIOEngine?.getResult?.(id)),sharedTask.id,{timeout:10000});
+  assert.match(await page.locator("#taskList").innerText(),/BOZZA AI GENERATA · DA REVISIONARE/);
+  assert.match(await page.locator("#taskList").innerText(),/Bozza AI di prova/);
+  await page.reload({waitUntil:"domcontentloaded"});
+  assert.match(await page.locator("#taskList").innerText(),/BOZZA AI GENERATA · DA REVISIONARE/);
+  assert.equal(await page.evaluate(()=>window.AIOEngine?.getStatus?.().keyLoaded),false);
+  assert.equal(await page.locator('[data-ai-action="generate"]').first().isDisabled(),true);
+
+  // Mobile layout: no horizontal page overflow, navigation available.
+  await page.setViewportSize({width:390,height:844});
+  await page.waitForTimeout(300);
+  assert.ok(await page.locator('[data-page="people"]').isVisible());
+  await page.locator('[data-page="collab"]').click();
+  assert.equal(await page.locator('[data-view="collab"].active').count(),1);
+  const boardSizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
+  assert.ok(boardSizes.scroll<=boardSizes.viewport+2,"Horizontal overflow in collaboration page: "+JSON.stringify(boardSizes));
+  await page.locator('[data-page="office"]').click();
+  const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
+  await page.goto("http://127.0.0.1:"+port+"/?legacy=1#office",{waitUntil:"domcontentloaded"});
+  await page.waitForFunction(() => document.querySelector(".penthouse-artwork")?.naturalWidth >= 1200, null, {timeout:25000});
+  await page.waitForFunction(()=>window.AIOAgents3D?.status==="ready",null,{timeout:45000});
+  await page.waitForFunction(()=>document.querySelector("#penthouseStage")?.scrollLeft>80,null,{timeout:5000});
+  assert.equal(await page.locator('.office-agent-select:not(.selected) .office-agent-mode').first().evaluate(
+    el=>getComputedStyle(el).display),"none","Mobile employee labels crowd the office");
+  const scroll = await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft);
+  assert.ok(scroll>80,"Mobile office did not pan to visible 3D people");
+  assert.equal(await page.locator(".aio-zone-bar button").count(),3);
+  await page.locator('[data-office-zone="lounge"]').click();
+  assert.equal(await page.locator('[data-office-zone="lounge"]').getAttribute("aria-pressed"),"true");
+  assert.ok((await page.locator("#penthouseStage").evaluate(el=>el.scrollLeft))>0);
+
+  await page.screenshot({path:"ai-office/office-premium-mobile.png"});
+
+  assert.ok(sizes.scroll<=sizes.viewport+2,"Horizontal overflow on mobile: "+JSON.stringify(sizes));
+  assert.deepEqual(errors,[],"Browser runtime errors");
+  console.log("Browser smoke test passed: hire + persist + task + mobile.");
+} finally {
+  await browser?.close();
+  server.kill();
+}

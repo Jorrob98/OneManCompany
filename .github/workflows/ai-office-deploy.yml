@@ -1,0 +1,221 @@
+name: AI Office Cloudflare Deploy
+on:
+  push:
+    branches: ["ai-office/cloudflare-telegram-v1"]
+    paths:
+      - "cloudflare/worker.mjs"
+      - "cloudflare/wrangler.toml"
+      - "ai-office/index.html"
+      - "ai-office/style.css"
+      - "ai-office/*.js"
+      - "ai-office/*.mjs"
+      - "ai-office/assets/**"
+      - "ai-office/.assetsignore"
+      - ".github/workflows/ai-office-deploy.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ai-office-cloudflare-worker-deploy
+  cancel-in-progress: false
+jobs:
+  verify-and-check-access:
+    runs-on: ubuntu-latest
+    outputs:
+      credentials: ${{ steps.access.outputs.configured }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify Cloudflare Worker contract (11 tests)
+        run: node --test cloudflare/worker.test.mjs
+      - name: Verify real 3D source syntax before publishing
+        run: node --check ai-office/office-real3d.mjs
+      - name: Verify UI syntax and local state tests before publishing
+        run: |
+          node --check ai-office/app.js
+          node --check ai-office/agents3d.mjs
+          node --check ai-office/movement.mjs
+          node --check ai-office/ai-engine.js
+          node --test ai-office/studio.test.mjs ai-office/movement.test.mjs
+      - name: Verify browser 3D rig and chair alignment before deploy
+        run: |
+          npm install --no-save playwright-core@1.56.1
+          node ai-office/real3d.test.mjs
+      - name: Check public Worker state without exposing secrets
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          for path in ("/health","/api/ai/status"):
+              url="https://ai-office-api.jorrob98.workers.dev"+path
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"AIO-check"}),timeout=12) as r:
+                      payload=r.read(4096).decode("utf-8","replace")
+                      try:
+                          obj=json.loads(payload)
+                          fields={k:obj.get(k) for k in ("service","status","ready","version","engine") if k in obj}
+                          result=json.dumps(fields)
+                      except (ValueError,TypeError):
+                          result="not_json (AI OFFICE API not confirmed)"
+                      print("LIVE",path,"HTTP",r.status,result)
+              except urllib.error.HTTPError as e:
+                  print("LIVE",path,"HTTP",e.code,"(AI OFFICE API not confirmed)")
+              except Exception as e:
+                  print("LIVE",path,"unreachable",type(e).__name__)
+          PY
+      - name: Determine deployment credentials without exposing values
+        id: access
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "### Worker deployment eligible" >> "$GITHUB_STEP_SUMMARY"
+            echo "Cloudflare credential secrets are present; attempting to deploy." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=AI OFFICE not deployed::Cloudflare deployment secrets are missing; deployment job will be SKIPPED."
+            echo "### AI OFFICE — NO DEPLOY" >> "$GITHUB_STEP_SUMMARY"
+            echo "Missing Cloudflare deployment credentials. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to repository Actions secrets and rerun this workflow. Never share their values in chat." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  deploy-existing-worker:
+    needs: verify-and-check-access
+    if: needs.verify-and-check-access.outputs.credentials == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Stamp precise Git commit into published preview assets
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          with open("ai-office/preview-version.json","w",encoding="utf-8") as f:
+              json.dump({"commit":os.environ["HEAD_SHA"],"source":"GitHub Actions","project":"AI OFFICE"},f)
+          PY
+      - name: Publish existing ai-office-api (no new worker)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare/wrangler.toml
+      - name: Verify EXACT published frontend commit and scene assets
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request,urllib.error
+          base="https://ai-office-api.jorrob98.workers.dev"
+          expected=os.environ["HEAD_SHA"]
+          for attempt in range(5):
+              try:
+                  def get(path,maxbytes=250000):
+                      req=urllib.request.Request(base+path,headers={"User-Agent":"AI-Office-Preview-Verification"})
+                      with urllib.request.urlopen(req,timeout=18) as resp:
+                          return resp.status,resp.headers.get("Content-Type",""),resp.read(maxbytes)
+                  _,_,version_raw=get("/preview-version.json")
+                  actual=json.loads(version_raw)["commit"]
+                  if actual!=expected:raise ValueError("published commit mismatch "+str(actual)[:12])
+                  status,kind,html=get("/")
+                  if status!=200 or b"<title>AI OFFICE" not in html:
+                      raise ValueError("preview index.html was not published")
+                  status,kind,script=get("/office-real3d.mjs")
+                  if status!=200 or b"AIOOffice3D" not in script:
+                      raise ValueError("real GLB actor script missing from preview")
+                  status,kind,img=get("/assets/penthouse-living-v3.webp",2048)
+                  if status!=200 or not kind.startswith("image/") or not img:
+                      raise ValueError("office visual asset missing from preview")
+                  print("PUBLIC FRONTEND VERIFIED:",base+"/")
+                  print("DEPLOYED COMMIT:",actual)
+                  print("GLB script / background asset: available")
+                  break
+              except Exception as exc:
+                  print("Preview verification attempt",attempt+1,"failed:",type(exc).__name__,str(exc)[:100])
+                  if attempt==4:raise
+                  time.sleep(3)
+          PY
+      - name: Check AI API exposed after deployment
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,time
+          base="https://ai-office-api.jorrob98.workers.dev"
+          valid=False
+          for i in range(5):
+              for path in ("/health","/api/ai/status"):
+                  try:
+                      req=urllib.request.Request(base+path,headers={
+                          "Accept":"application/json",
+                          "User-Agent":"AI-Office-Deploy-Check"
+                      })
+                      with urllib.request.urlopen(req,timeout=15) as response:
+                          content_type=response.headers.get("Content-Type","")
+                          raw=response.read(4096).decode("utf-8","replace")
+                          code=response.status
+                      try:
+                          data=json.loads(raw)
+                      except ValueError:
+                          data=None
+                      summary=({k:data.get(k) for k in ("service","status","version","ready","engine") if k in data}
+                               if isinstance(data,dict) else
+                               {"not_json":raw[:100].replace("\\n"," ").replace("\\r"," ")})
+                      print("LIVE",path,"status",code,"content-type",content_type,"response",json.dumps(summary,ensure_ascii=False))
+                      if path=="/api/ai/status" and isinstance(data,dict) and data.get("service")=="ai-office" and data.get("version")=="sprint-06":
+                          print("Deployment verified: AI OFFICE Sprint 06 API is live.")
+                          print("Binding/key configured:",bool(data.get("ready")))
+                          print("Configuration issue:",data.get("setupIssue","none"))
+                          valid=True
+                  except urllib.error.HTTPError as exc:
+                      print("LIVE",path,"HTTP",exc.code)
+                  except Exception as exc:
+                      print("LIVE",path,"failure",type(exc).__name__)
+              if valid:break
+              time.sleep(3)
+          if not valid:
+              raise SystemExit("Worker was uploaded, but the public API endpoint did not return AI OFFICE JSON.")
+          PY
+
+      - name: Verify deployed secret metadata and authorization status (no secret values)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npx --yes wrangler@4 secret list --config cloudflare/wrangler.toml --format json | python3 -c '
+          import json,sys
+          names={x.get("name") for x in json.load(sys.stdin)}
+          print("Encrypted operator key configured on deployed Worker:", "AI_OFFICE_API_KEY" in names)
+          '
+          python3 - <<'PY'
+          import urllib.request,urllib.error,json
+          endpoint="https://ai-office-api.jorrob98.workers.dev/api/ai/generate"
+          for origin in ("", "https://emergent-node-mffq999.shipstatic.com"):
+              headers={"content-type":"application/json"}
+              if origin:headers["Origin"]=origin
+              req=urllib.request.Request(endpoint,
+                  data=b'{"title":"AI Office configuration probe"}',
+                  method="POST",headers=headers)
+              try:
+                  with urllib.request.urlopen(req,timeout=12) as resp:
+                      status=resp.status;result=json.loads(resp.read(4000))
+              except urllib.error.HTTPError as exc:
+                  status=exc.code
+                  raw=exc.read(4000)
+                  try:result=json.loads(raw)
+                  except:
+                      result={"error":"non_json_http_response",
+                              "contentType":exc.headers.get("Content-Type",""),
+                              "sample":raw.decode("utf-8","replace")[:90]}
+              except Exception as exc:
+                  print("API probe error",type(exc).__name__);continue
+              print("Unauthorized request with origin:",bool(origin),
+                    "HTTP:",status,"code:",result.get("error","unknown"),
+                    "content_type:",result.get("contentType","json"),
+                    "sample:",result.get("sample","").replace("\\n"," "))
+          PY

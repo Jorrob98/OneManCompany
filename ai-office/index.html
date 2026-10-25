@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101522">
+  <script>
+    // Install this before the stylesheet loads: no old 2D/photographic
+    // office is allowed to paint while the default true-3D scene loads.
+    if (!new URLSearchParams(location.search).has("legacy")) {
+      document.documentElement.classList.add("aio-boot-3d");
+    }
+    window.AIOShowStageError = function () {
+      const el=document.getElementById("aioStageLoader");
+      if(!el)return;
+      el.classList.add("aio-stage-error");
+      el.setAttribute("role","alert");
+      const label=document.getElementById("aioLoadMessage");
+      if(label)label.textContent="Il 3D non è riuscito ad avviarsi. Gli incarichi restano salvati.";
+      const title=document.getElementById("aioLoadTitle");
+      if(title)title.textContent="Problema nel caricamento 3D";
+      document.documentElement.classList.add("aio-stage-failed");
+    };
+  </script>
+  <meta name="description" content="AI Office Studio, il tuo ufficio virtuale interattivo. Anteprima grafica e gestionale.">
+  <title>AI OFFICE — Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="./style.css" rel="stylesheet">
+  <script defer src="./app.js"></script>
+  <script defer src="./penthouse.js"></script>
+  <script defer src="./environment.js"></script>
+  <script defer src="./interactions.js"></script>
+  <script defer src="./ai-engine.js"></script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+  <script type="module">
+    // The former photographic 2.5D is a fallback only; geometric office is default.
+    if(new URLSearchParams(location.search).has("legacy")){
+      import("./agents3d.mjs");
+    } else {
+      import("./office-real3d.mjs").catch(error=>{
+        console.error("3D office module failed",error);
+        window.AIOShowStageError();
+      });
+    }
+  </script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="rail" aria-label="Navigazione">
+    <a class="brand" href="#office" aria-label="AI Office Studio">
+      <span class="brand-emblem"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-words">AI<span>OFFICE</span><small>STUDIO / 01</small></span>
+    </a>
+    <div class="rail-kicker">WORKSPACE</div>
+    <nav class="nav-list" aria-label="Sezioni">
+      <button class="nav-link active" data-page="office"><span class="nav-icon">▦</span><span>Il mio ufficio</span><span class="nav-hint">01</span></button>
+      <button class="nav-link" data-page="people"><span class="nav-icon">♙</span><span>Dipendenti</span><span class="nav-hint" id="nav-people">04</span></button>
+      <button class="nav-link" data-page="tasks"><span class="nav-icon">◈</span><span>Incarichi</span><span class="nav-hint" id="nav-tasks">00</span></button>
+      <button class="nav-link" data-page="collab"><span class="nav-icon">♧</span><span>Collaborazioni</span><span class="nav-hint" id="nav-collab">00</span></button>
+       <button class="nav-link" data-page="activity"><span class="nav-icon">◷</span><span>Attività</span><span class="nav-hint">↗</span></button>
+    </nav>
+    <div class="rail-bottom">
+      <div class="rail-panel">
+        <span class="rail-panel-icon">✦</span>
+        <strong>Un piccolo studio.<br>Grandi idee.</strong>
+        <p>Costruisci la tua squadra, assegna incarichi e prepara il tuo ufficio AI.</p>
+      </div>
+      <button id="aboutBtn" class="rail-status"><span class="led amber"></span><span>Anteprima locale</span><span>ⓘ</span></button>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="crumb"><span>WORKSPACE</span><span class="slash">/</span><strong id="crumbName">Ufficio</strong></div>
+      <div class="top-actions">
+        <div class="demo-pill"><span class="led amber"></span><span>MODALITÀ ANTEPRIMA</span></div>
+        <button class="mini-icon" id="infoBtn" aria-label="Informazioni sul funzionamento">?</button>
+        <button class="profile" id="profileBtn" title="Informazioni sul proprietario"><span class="profile-circle">J</span><span>Direttore</span><span class="arrow-sm">⌄</span></button>
+      </div>
+    </header>
+    <main>
+      <section class="page active" data-view="office" aria-label="Il mio ufficio">
+        <div class="heading-row">
+          <div>
+            <div class="eyebrow"><span class="tiny-square"></span> CONTROL ROOM <span class="eyebrow-line"></span> V1.0</div>
+            <h1>Buongiorno, <em>direttore.</em> <span class="wave">✳</span></h1>
+            <p class="section-subtitle">Il tuo team prende forma. Ogni grande progetto inizia da una scrivania.</p>
+          </div>
+          <button class="primary-button head-button" data-action="new-task"><span>＋</span> Nuovo incarico</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>PERSONE NEL TEAM</span><div class="stat-value"><strong id="statEmployees">04</strong><span class="stat-icon">◉</span></div><small>Profili gestiti nel browser</small></div>
+          <div class="stat"><span>DISPONIBILI</span><div class="stat-value"><strong id="statAvailable">04</strong><span class="stat-icon mint">↗</span></div><small>Pronti per nuovi incarichi</small></div>
+          <div class="stat"><span>INCARICHI IN ATTESA</span><div class="stat-value"><strong id="statTasks">00</strong><span class="stat-icon lilac">◈</span></div><small>Da collegare al motore AI</small></div>
+        </div>
+        <div class="office-grid">
+          <section class="room-card" aria-label="Ufficio virtuale interattivo">
+            <div class="panel-top">
+              <div><span class="window-dot mint-dot"></span><strong>Studio Floor</strong><span class="floor-suffix">/ HQ</span></div>
+              <div class="scene-actions"><span class="scene-label"><span class="pulse-dot"></span> UFFICIO INTERATTIVO · ANTEPRIMA</span><button id="roomZoom" class="scene-action" title="Cambia inquadratura">⤢</button></div>
+            </div>
+            <div class="scene-wrap">
+              <canvas id="roomCanvas" aria-hidden="true"></canvas>
+              <div id="aioStageLoader" class="aio-stage-loader" role="status" aria-live="polite" aria-atomic="true">
+                <div class="aio-loader-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div class="aio-loader-copy">
+                  <span class="aio-loader-eyebrow">AI OFFICE · STUDIO 3D</span>
+                  <strong id="aioLoadTitle">Preparazione dell'ufficio</strong>
+                  <p id="aioLoadMessage">Caricamento dello spazio e dei dipendenti 3D</p>
+                  <div class="aio-loader-progress" aria-hidden="true"><span></span></div>
+                  <div class="aio-loader-recovery">
+                    <button type="button" onclick="location.reload()">Riprova</button>
+                    <a href="?legacy=1#office">Vista di compatibilità</a>
+                  </div>
+                </div>
+              </div>
+              <div class="penthouse-stage" id="penthouseStage" data-background="living-v3" aria-label="Vista fotografica di riserva; la scena predefinita usa veri arredi 3D">
+                <div class="penthouse-surface" id="penthouseSurface">
+                  <img class="penthouse-artwork" src="./assets/penthouse-living-v3.webp" alt="Ufficio AI premium senza persone statiche, con postazioni vuote, vetrate panoramiche, sala riunioni e area relax" loading="lazy" decoding="async">
+                  <div class="penthouse-wash"></div>
+                  <div class="penthouse-markers" id="penthouseMarkers"></div>
+                </div>
+                <div class="penthouse-counter"><span class="pulse-dot"></span> PRESENTI <strong id="penthousePresent">04</strong></div>
+              </div>
+              <div class="room-hint"><span class="hint-icon">⌖</span> Seleziona gli agenti 3D · spostamenti dimostrativi</div>
+              <div class="scene-watermark"><span class="scene-watermark-spark">✦</span> AIO / STUDIO</div>
+            </div>
+            <div class="floor-toolbar"><span><span class="floor-color"></span> Piano principale</span><span>Ufficio 3D · Ambiente semplice</span><button id="roomMood" title="Giorno / Tramonto / Notte / Auto">☼ Ambiente</button></div>
+          </section>
+          <aside class="side-stack">
+            <div class="employee-panel">
+              <div class="side-heading"><span>✦</span> IL TUO TEAM <span class="side-count" id="sideCount">04</span></div>
+              <div id="teamMiniList" class="team-mini-list"></div>
+              <button class="outline-button" data-action="hire">＋ Assumi un agente</button>
+            </div>
+            <div class="focus-panel" id="focusPanel"></div>
+          </aside>
+        </div>
+        <div class="under-grid">
+          <div class="notice"><span class="notice-icon">↳</span><div><strong>Una grafica che vive.</strong><p>Quattro dipendenti 3D alternano lavoro al computer, gesti naturali, riunioni e brevi pause. Le animazioni non indicano lavoro AI eseguito; ferie, assunzioni e incarichi restano salvati nel browser.</p></div></div>
+          <button id="roadmapBtn" class="roadmap"><span>✧</span><strong>Il prossimo capitolo</strong><small>Telegram · Cloudflare · Agenti veri</small><span class="roadmap-arrow">↗</span></button>
+        </div>
+      </section>
+      <section class="page" data-view="people" aria-label="Dipendenti">
+        <div class="heading-row"><div><div class="eyebrow">THE PEOPLE / ORGANICO</div><h1>Le persone <em>contano.</em></h1><p class="section-subtitle">Assumi, metti in ferie, richiama o pensiona i tuoi agenti.</p></div><button class="primary-button head-button" data-action="hire">＋ Nuovo agente</button></div>
+        <div class="segmented"><button class="segment active" data-filter="all">Tutti</button><button class="segment" data-filter="available">Disponibili</button><button class="segment" data-filter="vacation">In ferie</button><button class="segment" data-filter="retired">Pensionati</button></div>
+        <div class="people-tools" aria-label="Ricerca e filtro del personale">
+          <label for="peopleSearch" class="sr-only">Cerca dipendenti</label>
+          <input id="peopleSearch" type="search" maxlength="60" placeholder="⌕ Cerca nome, competenza, ruolo…" autocomplete="off" aria-label="Cerca dipendenti">
+          <label for="peopleDepartment" class="sr-only">Filtra per reparto</label>
+          <select id="peopleDepartment" aria-label="Filtra per reparto"><option value="all">Tutti i reparti</option>
+            <option>Direzione</option><option>Tecnologia</option><option>Design</option><option>Ricerca</option>
+            <option>Qualità</option><option>Operazioni</option><option>Analisi</option><option>Marketing</option>
+          </select>
+          <span id="peopleSummary" aria-live="polite"></span>
+        </div>
+        <div id="peopleGrid" class="people-grid"></div>
+      </section>
+      <section class="page" data-view="tasks" aria-label="Incarichi">
+        <div class="heading-row"><div><div class="eyebrow">TASK DESK / LAVORI</div><h1>Idee in <em>movimento.</em></h1><p class="section-subtitle">Prepara gli incarichi per i tuoi agenti. L'esecuzione AI arriverà con il collegamento Cloudflare.</p></div><button class="primary-button head-button" data-action="new-task">＋ Crea incarico</button></div>
+        <div class="tasks-info"><span>◉</span><p><strong>Bozze verificabili.</strong> Le richieste AI partono solo quando premi Genera e soltanto se il Worker è stato attivato. Le risposte devono essere sempre revisionate: niente lavori esterni eseguiti automaticamente.</p></div>
+        <section class="ai-engine-panel" aria-label="Motore AI reale">
+          <div class="ai-engine-title"><span class="ai-engine-spark">✦</span><div><strong>Motore AI · Cloudflare</strong><small>Generazione testuale manuale, senza automatismi</small></div></div>
+          <div class="ai-engine-state"><span id="aiEngineStatus" data-state="unavailable" role="status" aria-live="polite">Worker non verificato</span><button type="button" data-ai-action="probe">↻ Verifica</button></div>
+          <div class="ai-engine-key">
+            <label for="aiEngineKey">Chiave operatore (solo memoria della pagina)</label>
+            <div class="ai-engine-key-controls"><input id="aiEngineKey" type="password" autocomplete="off" spellcheck="false" maxlength="200" placeholder="Chiave privata Cloudflare Worker">
+              <button type="button" data-ai-action="unlock">Attiva</button>
+              <button type="button" data-ai-action="forget-key">Dimentica</button></div>
+            <small id="aiEngineKeyState">Chiave non caricata</small>
+          </div>
+          <label class="ai-extra-label" for="aiEngineInstructions">Indicazioni per la bozza (facoltative)</label>
+          <textarea id="aiEngineInstructions" maxlength="300" rows="2" placeholder="Es. Risposta in 5 punti, concreta e sintetica."></textarea>
+          <p id="aiEngineInfo" class="ai-engine-footnote">Il token non viene salvato né inviato ad altri siti.</p>
+        </section>
+        <div id="taskList" class="task-list"></div>
+      </section>
+      <section class="page" data-view="collab" aria-label="Collaborazioni e riunioni">
+        <div class="heading-row"><div><div class="eyebrow">TEAM SYNC / STUDIO</div>
+          <h1>Insieme, <em>meglio.</em></h1>
+          <p class="section-subtitle">Organizza le interazioni e registra le decisioni. Il direttore conferma ogni azione.</p></div>
+        </div>
+        <div class="collab-banner">✳ <strong>Interazioni guidate.</strong> Riunioni animate in 3D e passaggi di bozze registrati nel browser. Nessuna conversazione AI o esecuzione autonoma.</div>
+        <div class="collab-summary">
+         <div class="collab-summary-item"><span>RIUNIONI ATTIVE</span><strong id="collabMeetingsCount">0</strong></div>
+         <div class="collab-summary-item"><span>PROPOSTE IN ATTESA</span><strong id="collabRequestsCount">0</strong></div>
+        </div>
+        <div class="collab-heading"><h2>♧ Riunioni</h2><button class="primary-button" data-collab-action="new-meeting">＋ Nuova riunione</button></div>
+        <div id="collabMeetings" class="collab-grid"></div>
+        <div class="collab-heading"><h2>↗ Collaborazioni</h2><button class="secondary-button" data-collab-action="new-request">＋ Nuova proposta</button></div>
+        <div id="collabRequests" class="collab-grid"></div>
+        <div class="collab-heading"><h2>◷ Registro verificabile</h2></div>
+        <div id="collabLedger" class="collab-ledger" aria-live="polite"></div>
+      </section>
+      <section class="page" data-view="activity" aria-label="Attività">
+        <div class="heading-row"><div><div class="eyebrow">STUDIO LOG / DIARIO</div><h1>Ogni passo <em>conta.</em></h1><p class="section-subtitle">Cronologia delle operazioni effettuate in questa anteprima.</p></div><button class="secondary-button" id="resetDemo">Ripristina anteprima</button></div>
+        <div id="activityList" class="activity-list"></div>
+      </section>
+    </main>
+    <footer class="footbar"><span>✳ AI OFFICE STUDIO — CONCEPT ORIGINALE</span><span>* Live indica animazione grafica, non agenti AI operativi. Nessun dato viene sincronizzato.</span></footer>
+  </div>
+</div>
+<div class="modal-shell" id="modalShell" aria-hidden="true">
+  <div class="modal-backdrop" data-action="close"></div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><span class="modal-kicker">AI OFFICE / CONTROL</span><button class="close-btn" aria-label="Chiudi" data-action="close">✕</button></div>
+    <h2 id="modalTitle"></h2>
+    <div id="modalContent"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body></html>
