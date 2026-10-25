@@ -445,7 +445,7 @@ function person(a,index){
  const mixer=new THREE.AnimationMixer(body),sex=key[0],idle=mixer.clipAction(clips[sex].idle);
  idle.play();
  const walk=mixer.clipAction(clips[sex].walk);walk.enabled=true;
- const limbs={thigh:[],calf:[],foot:[],arm:[],forearm:[],hand:[]};
+ const limbs={thigh:[],calf:[],foot:[],arm:[],forearm:[],hand:[],head:[]};
  body.traverse(obj=>{
    if(obj.isMesh){obj.castShadow=true;obj.userData.agentId=a.id;interactive.push(obj);}
    if(!obj.isBone)return;
@@ -456,6 +456,7 @@ function person(a,index){
    else if(/forearm|lowerarm/.test(n))limbs.forearm.push(obj);
    else if(/upperarm/.test(n))limbs.arm.push(obj);
    else if(/hand|wrist/.test(n))limbs.hand.push(obj);
+   else if(/head/.test(n)&&!/headset|headphone/.test(n))limbs.head.push(obj);
  });
  // Runtime GLB skeletons can extend far beyond the bind-pose bounding box.
  // Calibrate using the ACTUAL animated hip-to-ankle distance, in this same 3D
@@ -542,6 +543,26 @@ info.rigContact=(id)=>{
  return {seatY:a.seatY,blend:Number(a.sit.toFixed(3)),
    hips:a.limbs.thigh.map(y),knees:a.limbs.calf.map(y),
    ankles:a.limbs.foot.map(y),bodyY:Number(a.body.position.y.toFixed(3))};
+};
+// On-demand visibility audit: actual rig head rays against live 3D displays.
+// Not executed each frame, so screenshot QA gains evidence without FPS cost.
+info.visualAudit=()=>{
+ if(!camera||!scene)return {agents:[],blocked:0};
+ scene.updateMatrixWorld(true);
+ const result=[...agents.entries()].map(([id,a])=>{
+   const head=a.limbs.head[0]?.getWorldPosition(new THREE.Vector3())||
+     a.g.localToWorld(new THREE.Vector3(0,1.5,0));
+   const clip=head.clone().project(camera);
+   const ray=head.clone().sub(camera.position);
+   const distance=ray.length();
+   const intersections=new THREE.Raycaster(camera.position,ray.normalize(),
+     .01,Math.max(.02,distance-.08)).intersectObjects(screenPanels,false);
+   return {id,headY:Number(head.y.toFixed(3)),
+     inFrame:Math.abs(clip.x)<=.98&&Math.abs(clip.y)<=.98&&clip.z<1,
+     headNdcX:Number(clip.x.toFixed(3)),headNdcY:Number(clip.y.toFixed(3)),
+     screenBlocked:intersections.length>0};
+ });
+ return {agents:result,blocked:result.filter(x=>x.screenBlocked).length};
 };
 window.AIOAgents3D={
  status:"loading",agents:[],
