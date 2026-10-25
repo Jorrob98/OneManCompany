@@ -617,12 +617,41 @@ function cameraUpdate(){
  }
 }
 let lastMobile=null, cameraMode=0;
+// One-time camera fit when entering mobile workstation mode. It considers
+// all FOUR real actors, not only the first two desks, and checks both their
+// head and foot projections against the actual WebGL viewport aspect.
+function fitMobileTeam(){
+ if(!lastMobile||!agents.size)return;
+ const workers=[...agents.values()];
+ const minX=Math.min(...workers.map(a=>a.g.position.x));
+ const maxX=Math.max(...workers.map(a=>a.g.position.x));
+ const minZ=Math.min(...workers.map(a=>a.g.position.z));
+ const maxZ=Math.max(...workers.map(a=>a.g.position.z));
+ target.set((minX+maxX)/2,1.05,(minZ+maxZ)/2);
+ const probe=camera.clone();
+ let result=null;
+ for(let d=10.5;d<=31;d+=.5){
+   distance=d;cameraUpdate();
+   probe.position.copy(cameraDestination);
+   probe.quaternion.copy(camera.quaternion);
+   probe.lookAt(target);
+   probe.updateMatrixWorld(true);
+   const projected=workers.flatMap(a=>[.12,1.68].map(y=>
+     new THREE.Vector3(a.g.position.x,y,a.g.position.z).project(probe)));
+   result={count:workers.length,distance:Number(distance.toFixed(2)),
+     maxAbsX:Number(Math.max(...projected.map(p=>Math.abs(p.x))).toFixed(3)),
+     maxAbsY:Number(Math.max(...projected.map(p=>Math.abs(p.y))).toFixed(3))};
+   if(result.maxAbsX<=.83&&result.maxAbsY<=.82)break;
+ }
+ info.teamFraming=result;
+}
 function cameraPreset(mode){
  cameraMode=mode;
  info.cameraMode=["panoramica","postazioni","dipendente"][mode];
  if(mode===0){target.set(-2.25,1.10,.55);distance=17.8;elevation=.34;}
- else if(mode===1){target.set(lastMobile?-3.15:-2.9,1.07,3.45);
-   distance=lastMobile?9.6:13.4;elevation=lastMobile?.29:.34;}
+ else if(mode===1){target.set(-2.9,1.07,3.45);
+   distance=13.4;elevation=lastMobile?.31:.34;
+   if(lastMobile)fitMobileTeam();}
  else{
    const a=agents.get(selected)||agents.values().next().value;
    target.set(a?.g.position.x??-2.9,1.1,a?.g.position.z??3.5);
