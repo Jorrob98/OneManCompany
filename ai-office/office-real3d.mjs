@@ -787,8 +787,14 @@ function resize(){
    lastMobile=mobile;
    frameIntervals.length=0;
    info.metrics=null;
-   // Mobile starts on people, not a tiny overhead dollhouse.
+   // Device-width changes are hard scene-layout changes, not camera tours:
+   // settle the new camera immediately to avoid clipping GLB heads while the
+   // old wide-screen camera slowly eases into a narrow portrait viewport.
    cameraPreset(mobile?1:0);
+   camera.position.copy(cameraDestination);
+   cameraLookAt.copy(target);
+   camera.lookAt(target);
+   camera.updateMatrixWorld(true);
  }
 }
 function pointXY(event){
